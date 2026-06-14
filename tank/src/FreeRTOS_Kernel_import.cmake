@@ -1,0 +1,53 @@
+# Import the FreeRTOS RP2xxx port from the local kernel submodule by default.
+
+if (TARGET _FreeRTOS_kernel_inclusion_marker)
+	return()
+endif ()
+
+if (FREERTOS_KERNEL_PATH)
+	message(STATUS "Using FREERTOS_KERNEL_PATH from CMake: ${FREERTOS_KERNEL_PATH}")
+elseif (DEFINED ENV{FREERTOS_KERNEL_PATH} AND NOT "$ENV{FREERTOS_KERNEL_PATH}" STREQUAL "")
+	set(FREERTOS_KERNEL_PATH "$ENV{FREERTOS_KERNEL_PATH}")
+	message(STATUS "Using FREERTOS_KERNEL_PATH from environment: ${FREERTOS_KERNEL_PATH}")
+else ()
+	set(FREERTOS_KERNEL_PATH "${CMAKE_CURRENT_LIST_DIR}/../../lib/FreeRTOS-Kernel")
+	message(STATUS "Using repo FreeRTOS submodule: ${FREERTOS_KERNEL_PATH}")
+endif ()
+
+get_filename_component(FREERTOS_KERNEL_PATH "${FREERTOS_KERNEL_PATH}" REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
+
+if (NOT EXISTS "${FREERTOS_KERNEL_PATH}")
+	message(FATAL_ERROR "FreeRTOS kernel directory not found: ${FREERTOS_KERNEL_PATH}")
+endif ()
+
+if (PICO_PLATFORM STREQUAL "rp2040")
+	set(FREERTOS_KERNEL_PORT_NAME "RP2040")
+elseif (PICO_PLATFORM STREQUAL "rp2350-riscv")
+	set(FREERTOS_KERNEL_PORT_NAME "RP2350_RISC-V")
+else ()
+	set(FREERTOS_KERNEL_PORT_NAME "RP2350_ARM_NTZ")
+endif ()
+
+set(FREERTOS_KERNEL_PORT_PATHS
+		"portable/ThirdParty/GCC/${FREERTOS_KERNEL_PORT_NAME}"
+		"portable/ThirdParty/Community-Supported-Ports/GCC/${FREERTOS_KERNEL_PORT_NAME}"
+)
+
+unset(FREERTOS_KERNEL_PORT_PATH)
+
+foreach (PORT_PATH IN LISTS FREERTOS_KERNEL_PORT_PATHS)
+	if (EXISTS "${FREERTOS_KERNEL_PATH}/${PORT_PATH}/CMakeLists.txt")
+		set(FREERTOS_KERNEL_PORT_PATH "${PORT_PATH}")
+		break()
+	endif ()
+endforeach ()
+
+if (NOT FREERTOS_KERNEL_PORT_PATH)
+	message(FATAL_ERROR "FreeRTOS kernel at '${FREERTOS_KERNEL_PATH}' does not contain ${FREERTOS_KERNEL_PORT_NAME} for PICO_PLATFORM='${PICO_PLATFORM}'")
+endif ()
+
+message(STATUS "Using FreeRTOS port: ${FREERTOS_KERNEL_PORT_PATH}")
+
+set(FREERTOS_KERNEL_PATH "${FREERTOS_KERNEL_PATH}" CACHE PATH "Path to the FreeRTOS Kernel" FORCE)
+add_subdirectory("${FREERTOS_KERNEL_PATH}/${FREERTOS_KERNEL_PORT_PATH}" FREERTOS_KERNEL)
+
