@@ -15,6 +15,8 @@
 static uint slice1 = 0;
 static uint channel1 = 0;
 static u32 buffer[1] = { 0 };
+static constexpr u16 pwm_top = 10000;
+static constexpr u16 pwm_full = pwm_top + 1;
 
 void turret_ctrl_init() {
 	gpio_init(MOD_TURRET_CTRL_ENABLE1);
@@ -34,7 +36,7 @@ void turret_ctrl_init() {
 
 	// init PWM
 	auto pwm_c1 = pwm_get_default_config();
-	pwm_c1.top = 10000;
+	pwm_c1.top = pwm_top;
 	pwm_init(slice1, &pwm_c1, false);
 	pwm_set_clkdiv(slice1, 20.f); // 3.f for 5 khz frequency (2.f for 7.5 khz 1.f for 15 khz)
 	pwm_set_phase_correct(slice1, false);
@@ -54,6 +56,10 @@ void turret_ctrl_init() {
 }
 
 static void adjust_pwm(u16 *pwm) {
+	if (*pwm >= pwm_top) {
+		*pwm = pwm_full;
+		return;
+	}
 	if (*pwm <= 4000) {
 		*pwm = *pwm * 1.05;
 	} else if (*pwm <= 5000) {

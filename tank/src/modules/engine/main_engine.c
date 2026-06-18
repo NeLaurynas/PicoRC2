@@ -16,6 +16,8 @@ static u8 slice2 = 0;
 static u8 channel1 = 0;
 static u8 channel2 = 0;
 static u32 buffer[1] = { 0 };
+static constexpr u16 pwm_top = 100;
+static constexpr u16 pwm_full = pwm_top + 1;
 
 void main_engine_init() {
 	gpio_init(MOD_ENGINE_MAIN_ENABLE1);
@@ -32,7 +34,7 @@ void main_engine_init() {
 
 	// init PWM
 	auto pwm_c1 = pwm_get_default_config();
-	pwm_c1.top = 100;
+	pwm_c1.top = pwm_top;
 	pwm_init(slice1, &pwm_c1, false);
 	const auto clk_div = utils_calculate_pio_clk_div(0.5f);
 	utils_printf("MAIN ENGINE CLK DIV: %f", clk_div);
@@ -41,7 +43,7 @@ void main_engine_init() {
 	pwm_set_enabled(slice1, true);
 
 	auto pwm_c2 = pwm_get_default_config();
-	pwm_c2.top = 100;
+	pwm_c2.top = pwm_top;
 	pwm_init(slice2, &pwm_c2, false);
 	pwm_set_clkdiv(slice2, clk_div);
 	pwm_set_phase_correct(slice2, false);
@@ -90,6 +92,10 @@ static void set_motor_ctrl(const i32 val, const u16 pwm, const bool is_left_moto
 
 static void adjust_pwm(u16 *pwm) {
 	if (*pwm == 0) return;
+	if (*pwm >= pwm_top) {
+		*pwm = pwm_full;
+		return;
+	}
 	if (*pwm >= 90) return;
 
 	u16 out;
