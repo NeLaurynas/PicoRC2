@@ -4,9 +4,20 @@
 #include "control/input.h"
 
 #include <pico/sync.h>
+#include <stdlib.h>
+
+#include "defines/config.h"
 
 static critical_section_t input_critical_section;
 static control_input_state_t latest_input = { 0 };
+
+static i32 xy_dead_zone(const i32 val) {
+	return abs(val) <= XY_DEAD_ZONE ? 0 : val;
+}
+
+static i32 trig_dead_zone(const i32 val) {
+	return val <= TRIG_DEAD_ZONE ? 0 : val;
+}
 
 static control_input_state_t neutral_input(const bool connected) {
 	control_input_state_t input = { 0 };
@@ -37,10 +48,10 @@ void control_input_on_gamepad(const uni_gamepad_t *gamepad) {
 	if (gamepad == nullptr) return;
 
 	control_input_state_t input = {
-		.x = gamepad->axis_x,
-		.y = gamepad->axis_y,
-		.rx = gamepad->axis_rx,
-		.ry = gamepad->axis_ry,
+		.x = xy_dead_zone(gamepad->axis_x),
+		.y = xy_dead_zone(gamepad->axis_y),
+		.rx = xy_dead_zone(gamepad->axis_rx),
+		.ry = xy_dead_zone(gamepad->axis_ry),
 		.btn_a = (gamepad->buttons & BUTTON_A) != 0,
 		.btn_x = (gamepad->buttons & BUTTON_X) != 0,
 		.btn_b = (gamepad->buttons & BUTTON_B) != 0,
@@ -51,8 +62,8 @@ void control_input_on_gamepad(const uni_gamepad_t *gamepad) {
 		.dpad_down = (gamepad->dpad & DPAD_DOWN) != 0,
 		.dpad_left = (gamepad->dpad & DPAD_LEFT) != 0,
 		.dpad_right = (gamepad->dpad & DPAD_RIGHT) != 0,
-		.throttle = gamepad->throttle,
-		.brake = gamepad->brake,
+		.throttle = trig_dead_zone(gamepad->throttle),
+		.brake = trig_dead_zone(gamepad->brake),
 		.connected = true,
 	};
 

@@ -20,10 +20,10 @@ int main() {
 
 	stdio_init_all();
 
-#if DBG
-	sleep_ms(2000);
-	printf("Slept for 2 seconds\n");
-#endif
+// #if DBG
+	// sleep_ms(2000);
+	// printf("Slept for 2 seconds\n");
+// #endif
 
 	state_init();
 	tasks_create(&state.tasks.startup);
