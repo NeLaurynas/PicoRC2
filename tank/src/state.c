@@ -18,6 +18,13 @@ state_t state = {
 			.ticks = TASK_STARTUP_TICKS,
 			.function = task_startup,
 		},
+		.heartbeat = {
+			.name = "heartbeat",
+			.stack_depth = TASK_HEARTBEAT_STACK_DEPTH,
+			.priority = TASK_HEARTBEAT_PRIORITY,
+			.ticks = TASK_HEARTBEAT_TICKS,
+			.function = task_heartbeat,
+		},
 		.control_input = {
 			.name = "control_input",
 			.stack_depth = TASK_CONTROL_INPUT_STACK_DEPTH,
@@ -54,4 +61,3 @@ void state_sampled_input_get(control_input_state_t *input) {
 	*input = state.sampled_input;
 	critical_section_exit(&sampled_input_critical_section);
 }
-

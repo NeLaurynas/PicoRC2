@@ -34,8 +34,13 @@ void task_startup(void *task_parameter) {
 	uni_platform_set_custom(get_rc_platform());
 	uni_init(0, nullptr);
 
+	tasks_create(&state.tasks.heartbeat);
 	tasks_create(&state.tasks.control_actuation);
 	tasks_create(&state.tasks.control_input);
+
+	const auto stack_watermark = uxTaskGetStackHighWaterMark(nullptr);
+	state.tasks.startup.stack_used = state.tasks.startup.stack_depth - stack_watermark;
+	state.tasks.startup.handle = nullptr;
 
 	vTaskDelete(nullptr);
 
@@ -43,4 +48,3 @@ void task_startup(void *task_parameter) {
 		taskYIELD();
 	}
 }
-

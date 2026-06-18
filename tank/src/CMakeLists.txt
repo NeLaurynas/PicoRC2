@@ -88,6 +88,7 @@ add_executable(${PROJECT_NAME}
 		state.h
 		tasks/control_actuation.c
 		tasks/control_input.c
+		tasks/heartbeat.c
 		tasks/startup.c
 		tasks/tasks.c
 		tasks/tasks.h
