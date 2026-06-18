@@ -18,6 +18,12 @@ static u32 buffer[1] = { 0 };
 static constexpr u16 pwm_top = 10000;
 static constexpr u16 pwm_full = pwm_top + 1;
 
+static void buffer_set_pwm(const uint channel, const u16 pwm) {
+	buffer[0] = (channel == 1)
+		? (buffer[0] & 0x0000FFFF) | ((u32)pwm << 16)
+		: (buffer[0] & 0xFFFF0000) | (pwm & 0xFFFF);
+}
+
 void turret_ctrl_init() {
 	gpio_init(MOD_TURRET_CTRL_ENABLE1);
 	gpio_init(MOD_TURRET_CTRL_ENABLE2);
@@ -72,23 +78,11 @@ static void adjust_pwm(u16 *pwm) {
 }
 
 static void set_motor_ctrl(const i32 val, const u16 pwm) {
-	const u8 pin1 = MOD_TURRET_CTRL_ENABLE1;
-	const u8 pin2 = MOD_TURRET_CTRL_ENABLE2;
-	const u8 dma_ch = MOD_TURRET_CTRL_DMA_CH;
+	buffer_set_pwm(channel1, pwm);
 
-	buffer[0] = (channel1 == 1)
-		? (buffer[0] & 0x0000FFFF) | ((u32)pwm << 16)
-		: (buffer[0] & 0xFFFF0000) | (pwm & 0xFFFF);
-
-	if (val < 0) {
-		gpio_put(pin1, false);
-		gpio_put(pin2, true);
-		dma_channel_transfer_from_buffer_now(dma_ch, buffer, 1);
-	} else {
-		gpio_put(pin1, val != 0);
-		gpio_put(pin2, false);
-		dma_channel_transfer_from_buffer_now(dma_ch, buffer, 1);
-	}
+	gpio_put(MOD_TURRET_CTRL_ENABLE1, val > 0);
+	gpio_put(MOD_TURRET_CTRL_ENABLE2, val < 0);
+	dma_channel_transfer_from_buffer_now(MOD_TURRET_CTRL_DMA_CH, buffer, 1);
 }
 
 void turret_ctrl_rotate(const i32 val) {

@@ -5,7 +5,7 @@
 
 #define CONTROL_INPUT_TICK_US 10'000
 
-#define XY_DEAD_ZONE 30
+#define XY_DEAD_ZONE 40
 #define XY_MAX 510
 
 #define TRIG_DEAD_ZONE 10
