@@ -3,6 +3,7 @@
 
 #include <FreeRTOS.h>
 #include <task.h>
+#include <utils.h>
 
 #include "control/input.h"
 #include "state.h"
@@ -18,11 +19,10 @@ void task_control_input(void *task_parameter) {
 		control_input_sample(&input);
 		state_sampled_input_set(&input);
 
-		if (state.tasks.control_actuation.handle != nullptr) {
+		if (likely(state.tasks.control_actuation.handle != nullptr)) {
 			xTaskNotifyGive(state.tasks.control_actuation.handle);
 		}
 
 		tasks_delay(&state.tasks.control_input);
 	}
 }
-

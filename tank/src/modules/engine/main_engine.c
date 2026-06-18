@@ -114,30 +114,42 @@ void main_engine_advanced(const i32 left, const i32 right) {
 
 void main_engine_basic(const i32 gas, const i32 steer) {
 	const bool go_left = steer < 0;
-	const bool go_forward = gas > 0;
+	const bool go_backward = gas < 0;
 	const auto steer_perc = utils_scaled_pwm_percentage(steer, XY_DEAD_ZONE, XY_MAX);
 
 	auto gas_left = gas;
 	auto gas_right = gas;
 
 	i32 *gas_active = go_left ? &gas_left : &gas_right;
+	i32 *gas_passive = go_left ? &gas_right : &gas_left;
+	const u8 steer_split = 50;
 
-	const i8 sign = go_forward ? -1 : 1;
-	const u8 steer_baseline = (steer_perc <= 75) ? steer_perc : (steer_perc - 75);
-	const u8 steer_range = (steer_perc <= 75) ? 75 : 25;
-	const u8 scaled_value = utils_scaled_pwm_percentage(steer_baseline, 0, steer_range);
-
-	if (steer_perc <= 75) {
-		*gas_active -= (*gas_active * scaled_value) / 100;
+	if (gas == 0) {
+		if (steer_perc <= steer_split) {
+			const u8 scaled_value = utils_scaled_pwm_percentage(steer_perc, 0, steer_split);
+			*gas_active = -TRIG_MAX * scaled_value / 100;
+		} else {
+			const u8 scaled_value = utils_scaled_pwm_percentage(steer_perc - steer_split, 0, 100 - steer_split);
+			*gas_active = -TRIG_MAX;
+			*gas_passive = TRIG_MAX * scaled_value / 100;
+		}
 	} else {
-		*gas_active = sign * TRIG_MAX * scaled_value / 100;
+		const i8 sign = go_backward ? 1 : -1;
+
+		if (steer_perc <= steer_split) {
+			const u8 scaled_value = utils_scaled_pwm_percentage(steer_perc, 0, steer_split);
+			*gas_active -= (*gas_active * scaled_value) / 100;
+		} else {
+			const u8 scaled_value = utils_scaled_pwm_percentage(steer_perc - steer_split, 0, 100 - steer_split);
+			*gas_active = sign * TRIG_MAX * scaled_value / 100;
+		}
 	}
 
 	u16 pwm_left = utils_scaled_pwm_percentage(gas_left, TRIG_DEAD_ZONE, TRIG_MAX);
 	u16 pwm_right = utils_scaled_pwm_percentage(gas_right, TRIG_DEAD_ZONE, TRIG_MAX);
 	adjust_pwm(&pwm_left);
 	adjust_pwm(&pwm_right);
-	utils_printf("%d<<%ld>>%d\n", pwm_left, gas, pwm_right);
+	utils_printf("%c%d<<%ld>>%c%d\n", gas_left < 0 ? '-' : '+', pwm_left, gas, gas_right < 0 ? '-' : '+', pwm_right);
 
 	set_motor_ctrl(gas_left, pwm_left, true);
 	set_motor_ctrl(gas_right, pwm_right, false);
