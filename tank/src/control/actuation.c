@@ -3,6 +3,7 @@
 
 #include "control/actuation.h"
 
+#include "defines/config.h"
 #include "modules/engine/main_engine.h"
 #include "modules/engine/turret_ctrl.h"
 #include "modules/leds/leds.h"
@@ -51,6 +52,10 @@ void control_actuation_apply(const control_input_state_t *input) {
 		current_state->y = 0;
 		current_state->rx = 0;
 		current_state->ry = 0;
+		current_state->dpad_up = false;
+		current_state->dpad_down = false;
+		current_state->dpad_left = false;
+		current_state->dpad_right = false;
 		current_state->throttle = 0;
 		current_state->brake = 0;
 		current_state->connected = false;
@@ -77,12 +82,16 @@ void control_actuation_apply(const control_input_state_t *input) {
 		}
 	}
 
-	if (current_state->rx != input->rx) {
-		current_state->rx = input->rx;
-		turret_ctrl_rotate(input->rx);
+	if (current_state->dpad_left != input->dpad_left || current_state->dpad_right != input->dpad_right) {
+		current_state->dpad_left = input->dpad_left;
+		current_state->dpad_right = input->dpad_right;
+		const i32 rotate = (input->dpad_left ? -XY_MAX : 0) + (input->dpad_right ? XY_MAX : 0);
+		turret_ctrl_rotate(rotate);
 	}
-	if (current_state->ry != input->ry) {
-		current_state->ry = input->ry;
-		if (!current_state->advanced_mode) turret_ctrl_lift(input->ry);
+	if (current_state->dpad_up != input->dpad_up || current_state->dpad_down != input->dpad_down) {
+		current_state->dpad_up = input->dpad_up;
+		current_state->dpad_down = input->dpad_down;
+		const i32 lift = (input->dpad_up ? XY_MAX : 0) + (input->dpad_down ? -XY_MAX : 0);
+		turret_ctrl_lift(lift);
 	}
 }

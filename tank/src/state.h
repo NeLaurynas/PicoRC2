@@ -21,6 +21,11 @@ typedef struct {
 	bool btn_start;
 	bool btn_select;
 
+	bool dpad_up;
+	bool dpad_down;
+	bool dpad_left;
+	bool dpad_right;
+
 	bool shoulder_l;
 	bool shoulder_r;
 
@@ -44,6 +49,11 @@ typedef struct {
 
 	bool btn_start;
 	bool btn_select;
+
+	bool dpad_up;
+	bool dpad_down;
+	bool dpad_left;
+	bool dpad_right;
 
 	bool white_leds;
 	bool red_led;

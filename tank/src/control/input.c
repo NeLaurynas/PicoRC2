@@ -47,6 +47,10 @@ void control_input_on_gamepad(const uni_gamepad_t *gamepad) {
 		.btn_y = (gamepad->buttons & BUTTON_Y) != 0,
 		.btn_start = (gamepad->misc_buttons & MISC_BUTTON_START) != 0,
 		.btn_select = (gamepad->misc_buttons & MISC_BUTTON_SELECT) != 0,
+		.dpad_up = (gamepad->dpad & DPAD_UP) != 0,
+		.dpad_down = (gamepad->dpad & DPAD_DOWN) != 0,
+		.dpad_left = (gamepad->dpad & DPAD_LEFT) != 0,
+		.dpad_right = (gamepad->dpad & DPAD_RIGHT) != 0,
 		.throttle = gamepad->throttle,
 		.brake = gamepad->brake,
 		.connected = true,
@@ -64,4 +68,3 @@ void control_input_sample(control_input_state_t *input) {
 	*input = latest_input;
 	critical_section_exit(&input_critical_section);
 }
-
