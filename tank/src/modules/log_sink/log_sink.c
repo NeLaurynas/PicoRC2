@@ -3,8 +3,8 @@
 
 #include "utils.h"
 
-#include "bt/uni_bt_service.h"
+#include "modules/app_bt/app_bt.h"
 
 void utils_printf_sink(const char *text, const size_t len) {
-	uni_bt_service_log_write_safe(text, len);
+	app_bt_log_write_safe(text, len);
 }

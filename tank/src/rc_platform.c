@@ -8,6 +8,7 @@
 #include <uni.h>
 
 #include "control/input.h"
+#include "modules/app_bt/app_bt.h"
 #include "sdkconfig.h"
 
 #ifndef CONFIG_BLUEPAD32_PLATFORM_CUSTOM
@@ -21,6 +22,8 @@ static void rc_platform_init(int argc, const char **argv) {
 	ARG_UNUSED(argv);
 
 	logi("rc_platform: init()\n");
+
+	app_bt_init();
 
 	uni_gamepad_mappings_t mappings = GAMEPAD_DEFAULT_MAPPINGS;
 

@@ -92,6 +92,9 @@ add_executable(${PROJECT_NAME}
 		tasks/startup.c
 		tasks/tasks.c
 		tasks/tasks.h
+		modules/app_bt/app_bt.c
+		modules/app_bt/app_bt.h
+		modules/app_bt/picorc_bt_service.gatt.h
 		modules/engine/turret_ctrl.c
 		modules/engine/turret_ctrl.h
 		modules/engine/main_engine.c
