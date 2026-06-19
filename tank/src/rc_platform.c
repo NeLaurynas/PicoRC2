@@ -23,16 +23,12 @@ static void rc_platform_init(int argc, const char **argv) {
 
 	logi("rc_platform: init()\n");
 
-	app_bt_init();
-
 	uni_gamepad_mappings_t mappings = GAMEPAD_DEFAULT_MAPPINGS;
 
 	mappings.axis_ry_inverted = true;
 	mappings.axis_y_inverted = true;
 
 	uni_gamepad_set_mappings(&mappings);
-
-	uni_bt_service_set_enabled(true);
 }
 
 static void rc_platform_on_init_complete(void) {
@@ -45,6 +41,8 @@ static void rc_platform_on_init_complete(void) {
 	uni_bt_start_scanning_and_autoconnect_unsafe();
 
 	cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+
+	app_bt_start();
 }
 
 static uni_error_t rc_platform_on_device_discovered(bd_addr_t addr, const char *name, uint16_t cod, uint8_t rssi) {

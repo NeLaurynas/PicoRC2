@@ -8,7 +8,6 @@
 
 #include <btstack.h>
 
-#include "bt/uni_bt_service.h"
 #include "modules/app_bt/picorc_bt_service.gatt.h"
 
 #define NOTIFICATION_MTU 20
@@ -20,7 +19,6 @@ typedef struct {
 	uint8_t len;
 } log_chunk_t;
 
-static void app_bt_on_att_server_ready(void);
 static uint16_t app_bt_att_read_callback(hci_con_handle_t conn_handle, uint16_t att_handle, uint16_t offset,
                                          uint8_t *buffer, uint16_t buffer_size);
 static int app_bt_att_write_callback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode,
@@ -48,13 +46,6 @@ static const uint8_t picorc_adv_data[] = {
 };
 static_assert(sizeof picorc_adv_data <= 31, "picorc_adv_data too big");
 
-static const uni_bt_service_config_t service_config = {
-	.profile_data = picorc_bt_profile_data,
-	.adv_data = picorc_adv_data,
-	.adv_data_len = (uint8_t)sizeof picorc_adv_data,
-	.on_att_server_ready = app_bt_on_att_server_ready,
-};
-
 static log_chunk_t log_chunks[LOG_CHUNK_QUEUE_SIZE];
 static atomic_flag log_queue_lock = ATOMIC_FLAG_INIT;
 static atomic_uint log_chunk_count;
@@ -69,10 +60,6 @@ static bool log_notification_enabled;
 static btstack_context_callback_registration_t log_send_callback_registration;
 static btstack_context_callback_registration_t log_notify_callback_registration;
 static att_service_handler_t picorc_service_handler;
-
-void app_bt_init(void) {
-	(void)uni_bt_service_set_config(&service_config);
-}
 
 void app_bt_log_write_safe(const char *text, size_t len) {
 	if (text == nullptr || len == 0) return;
@@ -91,7 +78,9 @@ void app_bt_log_write_safe(const char *text, size_t len) {
 	if (queued) request_log_send_safe();
 }
 
-static void app_bt_on_att_server_ready(void) {
+void app_bt_start(void) {
+	att_server_init(picorc_bt_profile_data, app_bt_att_read_callback, app_bt_att_write_callback);
+
 	picorc_service_handler = (att_service_handler_t){
 		.read_callback = app_bt_att_read_callback,
 		.write_callback = app_bt_att_write_callback,
@@ -107,6 +96,11 @@ static void app_bt_on_att_server_ready(void) {
 	atomic_store_explicit(&log_send_request_pending, false, memory_order_release);
 	atomic_store_explicit(&log_notify_request_pending, false, memory_order_release);
 	log_queue_clear();
+
+	bd_addr_t null_addr = {0};
+	gap_advertisements_set_params(0x0030, 0x0030, 0, 0, null_addr, 0x07, 0x00);
+	gap_advertisements_set_data((uint8_t)sizeof picorc_adv_data, (uint8_t *)picorc_adv_data);
+	gap_advertisements_enable(true);
 }
 
 static uint16_t app_bt_att_read_callback(hci_con_handle_t conn_handle, uint16_t att_handle, uint16_t offset,
