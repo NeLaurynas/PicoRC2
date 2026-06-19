@@ -15,37 +15,48 @@ struct TankTelemetryState: Equatable {
     var isAdvancedMode = false
     var whiteLEDs = false
     var redLED = false
-    var sequence: UInt16 = 0
     var mainLeft = 0
     var mainRight = 0
     var turretRotate = 0
     var turretLift = 0
 }
 
+struct SystemTelemetryState: Equatable {
+    var cpuX10 = 0
+    var freeRTOSUsedKiB = 0
+    var freeRTOSTotalKiB = 0
+    var systemUsedKiB = 0
+    var systemTotalKiB = 0
+}
+
 final class BluetoothStreamModel: NSObject, ObservableObject {
     @Published private(set) var log = ""
     @Published private(set) var status = "Starting Bluetooth"
     @Published private(set) var tankState = TankTelemetryState()
+    @Published private(set) var systemState = SystemTelemetryState()
 
     private enum PacketType: UInt8 {
         case log = 0
         case tankStateFull = 1
         case tankStateDiff = 2
+        case systemState = 3
     }
 
     private let serviceUUID = CBUUID(string: "F7A4C001-2E2D-4E4B-9F2C-5049434F5243")
     private let streamCharacteristicUUID = CBUUID(string: "F7A4C002-2E2D-4E4B-9F2C-5049434F5243")
     private let retryDelay: TimeInterval = 5
-    private let maxLogCharacters = 50_000
-    private let tankStateVersion: UInt8 = 1
-    private let tankStateLength = 8
+    private let maxLogLines = 500
+    private let tankStateVersion: UInt8 = 2
+    private let tankStateLength = 5
+    private let systemStateVersion: UInt8 = 1
+    private let systemStateLength = 10
 
     private var centralManager: CBCentralManager!
     private var peripheral: CBPeripheral?
     private var retryWorkItem: DispatchWorkItem?
     private var pendingDisconnectStatus: String?
     private var ignoredPeripheralIdentifiers: [UUID: Date] = [:]
-    private var tankStateBytes = Array(repeating: UInt8(0), count: 8)
+    private var tankStateBytes = Array(repeating: UInt8(0), count: 5)
 
     override init() {
         super.init()
@@ -103,9 +114,19 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
 
     private func appendLog(_ text: String) {
         log += text
-        if log.count > maxLogCharacters {
-            log.removeFirst(log.count - maxLogCharacters)
+        trimLogLines()
+    }
+
+    private func trimLogLines() {
+        let hasTrailingNewline = log.last == "\n"
+        var lines = log.components(separatedBy: "\n")
+        let visibleLineCount = lines.count - (hasTrailingNewline ? 1 : 0)
+        guard visibleLineCount > maxLogLines else {
+            return
         }
+
+        lines.removeFirst(visibleLineCount - maxLogLines)
+        log = lines.joined(separator: "\n")
     }
 
     private func handlePacket(_ data: Data) {
@@ -125,6 +146,8 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
             handleTankStateFull(bytes)
         case .tankStateDiff:
             handleTankStateDiff(bytes)
+        case .systemState:
+            handleSystemState(bytes)
         }
     }
 
@@ -169,12 +192,29 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
             isAdvancedMode: (flags & 0b0000_0010) != 0,
             whiteLEDs: (flags & 0b0000_0100) != 0,
             redLED: (flags & 0b0000_1000) != 0,
-            sequence: UInt16(tankStateBytes[1]) | (UInt16(tankStateBytes[2]) << 8),
-            mainLeft: signedValue(tankStateBytes[3]),
-            mainRight: signedValue(tankStateBytes[4]),
-            turretRotate: signedValue(tankStateBytes[5]),
-            turretLift: signedValue(tankStateBytes[6])
+            mainLeft: signedValue(tankStateBytes[1]),
+            mainRight: signedValue(tankStateBytes[2]),
+            turretRotate: signedValue(tankStateBytes[3]),
+            turretLift: signedValue(tankStateBytes[4])
         )
+    }
+
+    private func handleSystemState(_ bytes: [UInt8]) {
+        guard bytes.count == systemStateLength + 2, bytes[1] == systemStateVersion else {
+            return
+        }
+
+        systemState = SystemTelemetryState(
+            cpuX10: unsigned16(bytes, at: 2),
+            freeRTOSUsedKiB: unsigned16(bytes, at: 4),
+            freeRTOSTotalKiB: unsigned16(bytes, at: 6),
+            systemUsedKiB: unsigned16(bytes, at: 8),
+            systemTotalKiB: unsigned16(bytes, at: 10)
+        )
+    }
+
+    private func unsigned16(_ bytes: [UInt8], at offset: Int) -> Int {
+        Int(UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8))
     }
 
     private func signedValue(_ byte: UInt8) -> Int {

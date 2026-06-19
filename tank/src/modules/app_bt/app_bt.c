@@ -11,13 +11,16 @@
 #include "modules/app_bt/picorc_bt_service.gatt.h"
 #include "state.h"
 
-#define NOTIFICATION_MTU 20
-#define LOG_PAYLOAD_MTU (NOTIFICATION_MTU - 1)
-#define NOTIFICATION_QUEUE_SIZE 32
+#define ATT_DEFAULT_MTU_BYTES 23
+#define LOG_PAYLOAD_MAX 64
+#define NOTIFICATION_MTU (LOG_PAYLOAD_MAX + 1)
+#define NOTIFICATION_QUEUE_SIZE 128
 #define APP_BT_AD_FLAGS 0b00000110
-#define TANK_STATE_VERSION 1
-#define TANK_STATE_LEN 8
-#define TANK_STATE_PERIOD_MS 100
+#define TANK_STATE_VERSION 2
+#define TANK_STATE_LEN 5
+#define SYSTEM_STATE_VERSION 1
+#define SYSTEM_STATE_LEN 10
+#define TANK_STATE_PERIOD_MS 50
 #define TANK_STATE_FULL_INTERVAL 10
 
 typedef struct {
@@ -48,9 +51,10 @@ static void tank_state_timer_callback(btstack_timer_source_t *timer);
 static void tank_state_queue_full_snapshot(void);
 static void tank_state_queue_tick_packet(void);
 static void tank_state_build_current(uint8_t bytes[TANK_STATE_LEN]);
-static bool tank_state_payload_changed(const uint8_t bytes[TANK_STATE_LEN]);
 static bool tank_state_queue_packet(app_bt_packet_type_t type, const uint8_t bytes[TANK_STATE_LEN],
                                     uint8_t changed_mask);
+static void system_state_queue_packet(void);
+static void system_state_build_current(uint8_t bytes[SYSTEM_STATE_LEN]);
 
 static const uint8_t picorc_adv_data[] = {
 	2, BLUETOOTH_DATA_TYPE_FLAGS, APP_BT_AD_FLAGS,
@@ -70,6 +74,7 @@ static atomic_bool notification_client_subscribed;
 static atomic_bool notification_queue_clear_requested;
 static atomic_bool notification_send_request_pending;
 static atomic_bool notification_notify_request_pending;
+static atomic_uint negotiated_att_mtu;
 static hci_con_handle_t notification_connection_handle = HCI_CON_HANDLE_INVALID;
 static bool notification_enabled;
 static btstack_context_callback_registration_t notification_send_callback_registration;
@@ -78,7 +83,6 @@ static btstack_timer_source_t tank_state_timer;
 static bool tank_state_timer_active;
 static uint8_t tank_state_previous[TANK_STATE_LEN];
 static bool tank_state_previous_valid;
-static uint16_t tank_state_sequence;
 static uint8_t tank_state_tick;
 static att_service_handler_t picorc_service_handler;
 
@@ -86,12 +90,17 @@ void app_bt_log_write_safe(const char *text, size_t len) {
 	if (text == nullptr || len == 0) return;
 	if (!atomic_load_explicit(&notification_client_subscribed, memory_order_acquire)) return;
 
+	uint16_t mtu = (uint16_t)atomic_load_explicit(&negotiated_att_mtu, memory_order_acquire);
+	if (mtu < ATT_DEFAULT_MTU_BYTES) mtu = ATT_DEFAULT_MTU_BYTES;
+	size_t chunk_cap = (size_t)(mtu - 3 - 1); // ATT notification header (3) + our 1-byte packet type
+	if (chunk_cap > LOG_PAYLOAD_MAX) chunk_cap = LOG_PAYLOAD_MAX;
+
 	auto queued = false;
 	while (len > 0) {
-		const auto chunk_len = len > LOG_PAYLOAD_MTU ? LOG_PAYLOAD_MTU : len;
+		const auto chunk_len = len > chunk_cap ? chunk_cap : len;
 		uint8_t packet[NOTIFICATION_MTU] = {APP_BT_PACKET_LOG};
 		memcpy(packet + 1, text, chunk_len);
-		if (!notification_queue_push_packet(packet, (uint8_t)chunk_len + 1)) break;
+		if (!notification_queue_push_packet(packet, (uint8_t)(chunk_len + 1))) break;
 
 		queued = true;
 		text += chunk_len;
@@ -117,11 +126,11 @@ void app_bt_start(void) {
 	notification_enabled = false;
 	tank_state_timer_active = false;
 	tank_state_previous_valid = false;
-	tank_state_sequence = 0;
 	tank_state_tick = 0;
 	atomic_store_explicit(&notification_client_subscribed, false, memory_order_release);
 	atomic_store_explicit(&notification_send_request_pending, false, memory_order_release);
 	atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
+	atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
 	notification_queue_clear();
 
 	bd_addr_t null_addr = {0};
@@ -164,6 +173,7 @@ static int app_bt_att_write_callback(hci_con_handle_t con_handle, uint16_t att_h
 
 			if (notification_enabled) {
 				tank_state_queue_full_snapshot();
+				system_state_queue_packet();
 				tank_state_timer_start();
 				request_notification_send_from_main();
 			} else {
@@ -187,9 +197,18 @@ static void app_bt_att_packet_handler(uint8_t packet_type, uint16_t channel, uin
 
 	switch (hci_event_packet_get_type(packet)) {
 		case ATT_EVENT_CONNECTED:
+			atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
 			if (notification_connection_handle == HCI_CON_HANDLE_INVALID) {
 				notification_connection_handle = att_event_connected_get_handle(packet);
 			}
+			break;
+
+		case ATT_EVENT_MTU_EXCHANGE_COMPLETE:
+			atomic_store_explicit(
+				&negotiated_att_mtu,
+				att_event_mtu_exchange_complete_get_MTU(packet),
+				memory_order_release
+			);
 			break;
 
 		case ATT_EVENT_DISCONNECTED:
@@ -197,6 +216,7 @@ static void app_bt_att_packet_handler(uint8_t packet_type, uint16_t channel, uin
 
 			notification_connection_handle = HCI_CON_HANDLE_INVALID;
 			notification_enabled = false;
+			atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
 			tank_state_timer_stop();
 			atomic_store_explicit(&notification_client_subscribed, false, memory_order_release);
 			atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
@@ -367,6 +387,7 @@ static void tank_state_timer_callback(btstack_timer_source_t *timer) {
 	if (notification_connection_handle == HCI_CON_HANDLE_INVALID || !notification_enabled) return;
 
 	tank_state_queue_tick_packet();
+	system_state_queue_packet();
 	request_notification_send_from_main();
 	tank_state_timer_start();
 }
@@ -418,23 +439,10 @@ static void tank_state_build_current(uint8_t bytes[TANK_STATE_LEN]) {
 		(telemetry.advanced_mode ? 0b00000010 : 0) |
 		(telemetry.white_leds ? 0b00000100 : 0) |
 		(telemetry.red_led ? 0b00001000 : 0);
-	bytes[3] = (uint8_t)telemetry.main_left;
-	bytes[4] = (uint8_t)telemetry.main_right;
-	bytes[5] = (uint8_t)telemetry.turret_rotate;
-	bytes[6] = (uint8_t)telemetry.turret_lift;
-	bytes[7] = 0;
-
-	if (tank_state_previous_valid && tank_state_payload_changed(bytes)) tank_state_sequence++;
-	little_endian_store_16(bytes, 1, tank_state_sequence);
-}
-
-static bool tank_state_payload_changed(const uint8_t bytes[TANK_STATE_LEN]) {
-	for (uint8_t i = 0; i < TANK_STATE_LEN; i++) {
-		if (i == 1 || i == 2) continue;
-		if (tank_state_previous[i] != bytes[i]) return true;
-	}
-
-	return false;
+	bytes[1] = (uint8_t)telemetry.main_left;
+	bytes[2] = (uint8_t)telemetry.main_right;
+	bytes[3] = (uint8_t)telemetry.turret_rotate;
+	bytes[4] = (uint8_t)telemetry.turret_lift;
 }
 
 static bool tank_state_queue_packet(const app_bt_packet_type_t type, const uint8_t bytes[TANK_STATE_LEN],
@@ -455,4 +463,24 @@ static bool tank_state_queue_packet(const app_bt_packet_type_t type, const uint8
 	}
 
 	return notification_queue_push_packet(packet, len);
+}
+
+static void system_state_queue_packet(void) {
+	uint8_t bytes[SYSTEM_STATE_LEN];
+	system_state_build_current(bytes);
+
+	uint8_t packet[NOTIFICATION_MTU] = {APP_BT_PACKET_SYSTEM_STATE, SYSTEM_STATE_VERSION};
+	memcpy(packet + 2, bytes, SYSTEM_STATE_LEN);
+	(void)notification_queue_push_packet(packet, SYSTEM_STATE_LEN + 2);
+}
+
+static void system_state_build_current(uint8_t bytes[SYSTEM_STATE_LEN]) {
+	system_telemetry_t telemetry;
+	state_system_telemetry_get(&telemetry);
+
+	little_endian_store_16(bytes, 0, telemetry.cpu_x10);
+	little_endian_store_16(bytes, 2, telemetry.freertos_used_kib);
+	little_endian_store_16(bytes, 4, telemetry.freertos_total_kib);
+	little_endian_store_16(bytes, 6, telemetry.system_used_kib);
+	little_endian_store_16(bytes, 8, telemetry.system_total_kib);
 }

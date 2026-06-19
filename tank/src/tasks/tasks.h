@@ -61,6 +61,12 @@ void tasks_delay(task_t *task);
 [[noreturn]]
 void task_heartbeat(void *task_parameter);
 
+#define TASK_SYSTEM_MONITOR_STACK_DEPTH TASK_STACK_256
+#define TASK_SYSTEM_MONITOR_PRIORITY TASK_PRIO_1_LOWEST
+#define TASK_SYSTEM_MONITOR_TICKS MS_TO_TICKS(50)
+[[noreturn]]
+void task_system_monitor(void *task_parameter);
+
 #define TASK_STARTUP_STACK_DEPTH TASK_STACK_256
 #define TASK_STARTUP_PRIORITY TASK_PRIO_6_REALTIME
 #define TASK_STARTUP_TICKS SECONDS_TO_TICKS(1)

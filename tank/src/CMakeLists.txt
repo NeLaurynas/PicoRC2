@@ -10,6 +10,25 @@ set(PICO_BOARD pico2_w CACHE STRING "Board type")
 
 add_compile_definitions(PICO_FLASH_ASSERT_ON_UNSAFE=0)
 
+add_compile_definitions(
+		PICO_STDIO_USB_STDOUT_TIMEOUT_US=0
+		CFG_TUD_CDC_TX_BUFSIZE=128
+)
+
+# DBG is defined once in shared_config.h (single source of truth). Read its value
+# here so the entire build - including the pico-shared submodule and FreeRTOS - sees
+# the same value, and so USB stdio can be disabled when DBG is 0.
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/shared_config.h" DBG_CONFIG_LINES
+		REGEX "#[ \t]*define[ \t]+DBG[ \t]+[0-9]+")
+set(DBG_VALUE 1)
+foreach (DBG_CONFIG_LINE IN LISTS DBG_CONFIG_LINES)
+	if (DBG_CONFIG_LINE MATCHES "#[ \t]*define[ \t]+DBG[ \t]+([0-9]+)")
+		set(DBG_VALUE "${CMAKE_MATCH_1}")
+	endif ()
+endforeach ()
+message(STATUS "PicoRC: DBG=${DBG_VALUE} (from shared_config.h)")
+add_compile_definitions(DBG=${DBG_VALUE})
+
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 project(${PROJECT_NAME} C CXX ASM)
@@ -90,6 +109,7 @@ add_executable(${PROJECT_NAME}
 		tasks/control_input.c
 		tasks/heartbeat.c
 		tasks/startup.c
+		tasks/system_monitor.c
 		tasks/tasks.c
 		tasks/tasks.h
 		modules/app_bt/app_bt.c
@@ -139,7 +159,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 	pico_enable_stdio_usb(${PROJECT_NAME} 0)
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
 	pico_enable_stdio_uart(${PROJECT_NAME} 0)
-	pico_enable_stdio_usb(${PROJECT_NAME} 1)
+	pico_enable_stdio_usb(${PROJECT_NAME} ${DBG_VALUE})
 else ()
 	message(WARNING "Unhandled build type: ${CMAKE_BUILD_TYPE}")
 endif ()

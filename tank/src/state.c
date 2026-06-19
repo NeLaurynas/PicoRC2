@@ -9,6 +9,7 @@
 
 static critical_section_t sampled_input_critical_section;
 static critical_section_t telemetry_critical_section;
+static critical_section_t system_telemetry_critical_section;
 
 state_t state = {
 	.tasks = {
@@ -25,6 +26,13 @@ state_t state = {
 			.priority = TASK_HEARTBEAT_PRIORITY,
 			.ticks = TASK_HEARTBEAT_TICKS,
 			.function = task_heartbeat,
+		},
+		.system_monitor = {
+			.name = "system_monitor",
+			.stack_depth = TASK_SYSTEM_MONITOR_STACK_DEPTH,
+			.priority = TASK_SYSTEM_MONITOR_PRIORITY,
+			.ticks = TASK_SYSTEM_MONITOR_TICKS,
+			.function = task_system_monitor,
 		},
 		.control_input = {
 			.name = "control_input",
@@ -46,6 +54,7 @@ state_t state = {
 void state_init() {
 	critical_section_init(&sampled_input_critical_section);
 	critical_section_init(&telemetry_critical_section);
+	critical_section_init(&system_telemetry_critical_section);
 }
 
 void state_sampled_input_set(const control_input_state_t *input) {
@@ -78,4 +87,20 @@ void state_telemetry_get(telemetry_t *telemetry) {
 	critical_section_enter_blocking(&telemetry_critical_section);
 	*telemetry = state.telemetry;
 	critical_section_exit(&telemetry_critical_section);
+}
+
+void state_system_telemetry_set(const system_telemetry_t *telemetry) {
+	configASSERT(telemetry != nullptr);
+
+	critical_section_enter_blocking(&system_telemetry_critical_section);
+	state.system_telemetry = *telemetry;
+	critical_section_exit(&system_telemetry_critical_section);
+}
+
+void state_system_telemetry_get(system_telemetry_t *telemetry) {
+	configASSERT(telemetry != nullptr);
+
+	critical_section_enter_blocking(&system_telemetry_critical_section);
+	*telemetry = state.system_telemetry;
+	critical_section_exit(&system_telemetry_critical_section);
 }
