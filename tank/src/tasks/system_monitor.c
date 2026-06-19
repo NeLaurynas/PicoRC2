@@ -9,6 +9,7 @@
 #include "frtos.h"
 #include "shared_modules/memory/memory.h"
 #include "state.h"
+#include "storage/app_storage.h"
 #include "tasks/tasks.h"
 
 #define BYTES_IN_KIB 1024U
@@ -77,6 +78,7 @@ void task_system_monitor(void *task_parameter) {
 			.freertos_total_kib = bytes_to_kib(freertos_total_bytes),
 			.system_used_kib = system_used_kib,
 			.system_total_kib = system_total_kib,
+			.boot_count = app_storage_boot_count(),
 		};
 		state_system_telemetry_set(&telemetry);
 

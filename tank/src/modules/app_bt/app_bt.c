@@ -18,8 +18,8 @@
 #define APP_BT_AD_FLAGS 0b00000110
 #define TANK_STATE_VERSION 2
 #define TANK_STATE_LEN 5
-#define SYSTEM_STATE_VERSION 1
-#define SYSTEM_STATE_LEN 10
+#define SYSTEM_STATE_VERSION 2
+#define SYSTEM_STATE_LEN 12
 #define TANK_STATE_PERIOD_MS 50
 #define TANK_STATE_FULL_INTERVAL 10
 
@@ -483,4 +483,5 @@ static void system_state_build_current(uint8_t bytes[SYSTEM_STATE_LEN]) {
 	little_endian_store_16(bytes, 4, telemetry.freertos_total_kib);
 	little_endian_store_16(bytes, 6, telemetry.system_used_kib);
 	little_endian_store_16(bytes, 8, telemetry.system_total_kib);
+	little_endian_store_16(bytes, 10, telemetry.boot_count);
 }

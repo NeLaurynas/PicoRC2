@@ -11,6 +11,7 @@
 #include "control/actuation.h"
 #include "control/input.h"
 #include "state.h"
+#include "storage/app_storage.h"
 #include "tasks/tasks.h"
 #include "utils.h"
 
@@ -19,6 +20,10 @@ struct uni_platform *get_rc_platform(void);
 [[noreturn]]
 void task_startup(void *task_parameter) {
 	(void)task_parameter;
+
+	if (!app_storage_init()) {
+		utils_error_mode(30);
+	}
 
 	control_input_init();
 	control_actuation_init();
@@ -30,7 +35,6 @@ void task_startup(void *task_parameter) {
 	(void)status_led_init_with_context(cyw43_arch_async_context());
 	cyw43_set_pio_clock_divisor(1, 0);
 
-	cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
 	uni_platform_set_custom(get_rc_platform());
 	uni_init(0, nullptr);
 

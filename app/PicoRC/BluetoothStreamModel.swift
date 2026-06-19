@@ -27,6 +27,7 @@ struct SystemTelemetryState: Equatable {
     var freeRTOSTotalKiB = 0
     var systemUsedKiB = 0
     var systemTotalKiB = 0
+    var bootCount = 0
 }
 
 final class BluetoothStreamModel: NSObject, ObservableObject {
@@ -48,8 +49,8 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
     private let maxLogLines = 500
     private let tankStateVersion: UInt8 = 2
     private let tankStateLength = 5
-    private let systemStateVersion: UInt8 = 1
-    private let systemStateLength = 10
+    private let systemStateVersion: UInt8 = 2
+    private let systemStateLength = 12
 
     private var centralManager: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -209,7 +210,8 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
             freeRTOSUsedKiB: unsigned16(bytes, at: 4),
             freeRTOSTotalKiB: unsigned16(bytes, at: 6),
             systemUsedKiB: unsigned16(bytes, at: 8),
-            systemTotalKiB: unsigned16(bytes, at: 10)
+            systemTotalKiB: unsigned16(bytes, at: 10),
+            bootCount: unsigned16(bytes, at: 12)
         )
     }
 

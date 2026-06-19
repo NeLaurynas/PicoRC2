@@ -87,6 +87,7 @@ typedef struct {
 	u16 freertos_total_kib;
 	u16 system_used_kib;
 	u16 system_total_kib;
+	u16 boot_count;
 } system_telemetry_t;
 
 typedef struct {
