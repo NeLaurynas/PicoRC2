@@ -8,6 +8,7 @@
 #include "defines/config.h"
 
 static critical_section_t sampled_input_critical_section;
+static critical_section_t telemetry_critical_section;
 
 state_t state = {
 	.tasks = {
@@ -44,6 +45,7 @@ state_t state = {
 
 void state_init() {
 	critical_section_init(&sampled_input_critical_section);
+	critical_section_init(&telemetry_critical_section);
 }
 
 void state_sampled_input_set(const control_input_state_t *input) {
@@ -60,4 +62,20 @@ void state_sampled_input_get(control_input_state_t *input) {
 	critical_section_enter_blocking(&sampled_input_critical_section);
 	*input = state.sampled_input;
 	critical_section_exit(&sampled_input_critical_section);
+}
+
+void state_telemetry_set(const telemetry_t *telemetry) {
+	configASSERT(telemetry != nullptr);
+
+	critical_section_enter_blocking(&telemetry_critical_section);
+	state.telemetry = *telemetry;
+	critical_section_exit(&telemetry_critical_section);
+}
+
+void state_telemetry_get(telemetry_t *telemetry) {
+	configASSERT(telemetry != nullptr);
+
+	critical_section_enter_blocking(&telemetry_critical_section);
+	*telemetry = state.telemetry;
+	critical_section_exit(&telemetry_critical_section);
 }

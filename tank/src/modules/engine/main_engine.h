@@ -9,4 +9,4 @@ void main_engine_init();
 
 void main_engine_advanced(i32 left, i32 right);
 
-void main_engine_basic(i32 gas, i32 steer);
+void main_engine_basic(i32 gas, i32 steer, i32 *left, i32 *right);

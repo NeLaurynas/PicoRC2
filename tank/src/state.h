@@ -70,8 +70,21 @@ typedef struct {
 } control_actuation_state_t;
 
 typedef struct {
+	bool connected;
+	bool advanced_mode;
+	bool white_leds;
+	bool red_led;
+
+	i8 main_left;
+	i8 main_right;
+	i8 turret_rotate;
+	i8 turret_lift;
+} telemetry_t;
+
+typedef struct {
 	control_input_state_t sampled_input;
 	control_actuation_state_t actuation;
+	telemetry_t telemetry;
 
 	struct {
 		task_t startup;
@@ -86,3 +99,5 @@ extern state_t state;
 void state_init();
 void state_sampled_input_set(const control_input_state_t *input);
 void state_sampled_input_get(control_input_state_t *input);
+void state_telemetry_set(const telemetry_t *telemetry);
+void state_telemetry_get(telemetry_t *telemetry);
