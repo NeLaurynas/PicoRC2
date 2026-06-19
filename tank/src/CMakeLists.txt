@@ -98,6 +98,7 @@ add_executable(${PROJECT_NAME}
 		modules/engine/main_engine.h
 		modules/leds/leds.c
 		modules/leds/leds.h
+		modules/log_sink/log_sink.c
 )
 
 pico_set_program_name(${PROJECT_NAME} "${PROJECT_NAME}")

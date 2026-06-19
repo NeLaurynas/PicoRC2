@@ -28,6 +28,8 @@ static void rc_platform_init(int argc, const char **argv) {
 	mappings.axis_y_inverted = true;
 
 	uni_gamepad_set_mappings(&mappings);
+
+	uni_bt_service_set_enabled(true);
 }
 
 static void rc_platform_on_init_complete(void) {

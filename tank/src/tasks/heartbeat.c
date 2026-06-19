@@ -39,7 +39,12 @@ static void print_system() {
 	float cpu_usage = 0.0f;
 	(void)frtos_cpu_usage_percent(&cpu_usage);
 
-	utils_printf("cpu - %.1f%%\n", cpu_usage);
+	const auto cpu_tenths = (u32)(cpu_usage * 10.0f + 0.5f);
+	utils_printf(
+		"cpu - %lu.%lu%%\n",
+		(unsigned long)(cpu_tenths / 10),
+		(unsigned long)(cpu_tenths % 10)
+	);
 }
 
 [[noreturn]]
