@@ -4,6 +4,7 @@
 #include "hooks.h"
 
 #include <portable.h>
+#include <stdio.h>
 
 #include "utils.h"
 
@@ -11,16 +12,15 @@
 void vApplicationStackOverflowHook(TaskHandle_t task, char *task_name) {
 	(void)task;
 	while (true)
-		utils_printf("stack overflow: %s\n", unlikely(task_name == nullptr) ? "unknown" : task_name);
+		printf("stack overflow: %s\n", unlikely(task_name == nullptr) ? "unknown" : task_name);
 }
 
 [[noreturn]]
 void vApplicationMallocFailedHook() {
 	while (true)
-		utils_printf(
+		printf(
 			"freertos malloc failed: %zu/%zu bytes free\n",
 			xPortGetFreeHeapSize(),
 			(size_t)configTOTAL_HEAP_SIZE
 		);
 }
-

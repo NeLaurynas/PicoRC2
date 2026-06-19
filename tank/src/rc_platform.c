@@ -8,6 +8,7 @@
 #include <uni.h>
 
 #include "control/input.h"
+#include "modules/app_bt/app_bt.h"
 #include "sdkconfig.h"
 
 #ifndef CONFIG_BLUEPAD32_PLATFORM_CUSTOM
@@ -40,6 +41,8 @@ static void rc_platform_on_init_complete(void) {
 	uni_bt_start_scanning_and_autoconnect_unsafe();
 
 	cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+
+	app_bt_start();
 }
 
 static uni_error_t rc_platform_on_device_discovered(bd_addr_t addr, const char *name, uint16_t cod, uint8_t rssi) {

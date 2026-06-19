@@ -55,9 +55,9 @@ typedef struct {
 void tasks_create(task_t *task);
 void tasks_delay(task_t *task);
 
-#define TASK_HEARTBEAT_STACK_DEPTH TASK_STACK_384
+#define TASK_HEARTBEAT_STACK_DEPTH TASK_STACK_1024
 #define TASK_HEARTBEAT_PRIORITY TASK_PRIO_2_LOWER
-#define TASK_HEARTBEAT_TICKS SECONDS_TO_TICKS(10)
+#define TASK_HEARTBEAT_TICKS SECONDS_TO_TICKS(5)
 [[noreturn]]
 void task_heartbeat(void *task_parameter);
 
@@ -73,7 +73,7 @@ void task_startup(void *task_parameter);
 [[noreturn]]
 void task_control_input(void *task_parameter);
 
-#define TASK_CONTROL_ACTUATION_STACK_DEPTH TASK_STACK_384
+#define TASK_CONTROL_ACTUATION_STACK_DEPTH TASK_STACK_640
 #define TASK_CONTROL_ACTUATION_PRIORITY TASK_PRIO_4_HIGHER
 #define TASK_CONTROL_ACTUATION_TICKS SECONDS_TO_TICKS(1)
 [[noreturn]]
