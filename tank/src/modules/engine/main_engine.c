@@ -109,7 +109,7 @@ void main_engine_advanced(const i32 left, const i32 right) {
 	set_motor_ctrl(right, pwm_right, false);
 }
 
-void main_engine_basic(const i32 gas, const i32 steer) {
+void main_engine_basic(const i32 gas, const i32 steer, i32 *left, i32 *right) {
 	const bool go_left = steer < 0;
 	const bool go_backward = gas < 0;
 	const auto steer_perc = utils_scaled_pwm_percentage(steer, XY_DEAD_ZONE, XY_MAX);
@@ -150,4 +150,7 @@ void main_engine_basic(const i32 gas, const i32 steer) {
 
 	set_motor_ctrl(gas_left, pwm_left, true);
 	set_motor_ctrl(gas_right, pwm_right, false);
+
+	if (left != nullptr) *left = gas_left;
+	if (right != nullptr) *right = gas_right;
 }

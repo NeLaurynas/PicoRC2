@@ -5,6 +5,13 @@
 
 #include <stddef.h>
 
+typedef enum {
+	APP_BT_PACKET_LOG = 0,
+	APP_BT_PACKET_TANK_STATE_FULL = 1,
+	APP_BT_PACKET_TANK_STATE_DIFF = 2,
+	APP_BT_PACKET_SYSTEM_STATE = 3,
+} app_bt_packet_type_t;
+
 void app_bt_start(void);
 
 void app_bt_log_write_safe(const char *text, size_t len);

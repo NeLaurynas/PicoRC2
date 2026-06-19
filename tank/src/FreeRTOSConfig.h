@@ -10,10 +10,6 @@
 
 uint32_t frtos_runtime_counter();
 
-#ifndef DBG
-#define DBG 1
-#endif
-
 #define configUSE_PREEMPTION                    1
 #define configUSE_TICKLESS_IDLE                 1
 #define configUSE_IDLE_HOOK                     0
@@ -40,7 +36,7 @@ uint32_t frtos_runtime_counter();
 
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-#define configTOTAL_HEAP_SIZE                   (128 * 1024)
+#define configTOTAL_HEAP_SIZE                   (64 * 1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 #define configCHECK_FOR_STACK_OVERFLOW          2

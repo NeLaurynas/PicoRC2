@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <task.h>
 
-#include "frtos.h"
 #include "state.h"
 #include "tasks/tasks.h"
 #include "utils.h"
@@ -35,13 +34,6 @@ static void print_tasks(task_t *const tasks[], const size_t task_count) {
 	}
 }
 
-static void print_system() {
-	float cpu_usage = 0.0f;
-	(void)frtos_cpu_usage_percent(&cpu_usage);
-
-	utils_printf("cpu - %.1f%%\n", cpu_usage);
-}
-
 [[noreturn]]
 void task_heartbeat(void *task_parameter) {
 	(void)task_parameter;
@@ -50,6 +42,7 @@ void task_heartbeat(void *task_parameter) {
 	task_t *const tasks[] = {
 		&state.tasks.heartbeat,
 		&state.tasks.startup,
+		&state.tasks.system_monitor,
 		&state.tasks.control_input,
 		&state.tasks.control_actuation,
 	};
@@ -57,8 +50,7 @@ void task_heartbeat(void *task_parameter) {
 	while (true) {
 		update_tasks(tasks, ARRAY_SIZE(tasks));
 		print_tasks(tasks, ARRAY_SIZE(tasks));
-		print_system();
-		utils_printf("--------\n");
+		utils_printf("-\n");
 
 		tasks_delay(&state.tasks.heartbeat);
 	}

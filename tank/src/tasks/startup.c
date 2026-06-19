@@ -35,6 +35,7 @@ void task_startup(void *task_parameter) {
 	uni_init(0, nullptr);
 
 	tasks_create(&state.tasks.heartbeat);
+	tasks_create(&state.tasks.system_monitor);
 	tasks_create(&state.tasks.control_actuation);
 	tasks_create(&state.tasks.control_input);
 
