@@ -17,6 +17,7 @@ final class BluetoothLogModel: NSObject, ObservableObject {
     private let serviceUUID = CBUUID(string: "F7A4C001-2E2D-4E4B-9F2C-5049434F5243")
     private let logCharacteristicUUID = CBUUID(string: "F7A4C002-2E2D-4E4B-9F2C-5049434F5243")
     private let retryDelay: TimeInterval = 5
+    private let maxLogCharacters = 50_000
 
     private var centralManager: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -44,7 +45,7 @@ final class BluetoothLogModel: NSObject, ObservableObject {
         )
     }
 
-    private func isPicoRCAdvertisement(_ peripheral: CBPeripheral, advertisementData: [String: Any]) -> Bool {
+    private func isPicoRCAdvertisement(_ advertisementData: [String: Any]) -> Bool {
         let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]
         if serviceUUIDs?.contains(serviceUUID) == true {
             return true
@@ -76,6 +77,13 @@ final class BluetoothLogModel: NSObject, ObservableObject {
 
     private func markTemporarilyIgnored(_ peripheral: CBPeripheral) {
         ignoredPeripheralIdentifiers[peripheral.identifier] = Date().addingTimeInterval(retryDelay)
+    }
+
+    private func appendLog(_ text: String) {
+        log += text
+        if log.count > maxLogCharacters {
+            log.removeFirst(log.count - maxLogCharacters)
+        }
     }
 
     private func disconnect(_ peripheral: CBPeripheral, status: String) {
@@ -128,7 +136,7 @@ extension BluetoothLogModel: CBCentralManagerDelegate {
         guard !shouldIgnore(peripheral) else {
             return
         }
-        guard isPicoRCAdvertisement(peripheral, advertisementData: advertisementData) else {
+        guard isPicoRCAdvertisement(advertisementData) else {
             return
         }
 
@@ -216,6 +224,6 @@ extension BluetoothLogModel: CBPeripheralDelegate {
         }
 
         status = "Connected"
-        log += String(decoding: data, as: UTF8.self)
+        appendLog(String(decoding: data, as: UTF8.self))
     }
 }
