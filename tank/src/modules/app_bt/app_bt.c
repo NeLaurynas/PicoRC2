@@ -13,6 +13,7 @@
 
 #define NOTIFICATION_MTU 20
 #define LOG_CHUNK_QUEUE_SIZE 32
+#define APP_BT_AD_FLAGS 0b00000110
 
 typedef struct {
 	uint8_t data[NOTIFICATION_MTU];
@@ -38,15 +39,19 @@ static void request_log_send_from_main(void);
 static void schedule_log_send_callback(void *context);
 static void notify_log_client_callback(void *context);
 
-static const uint8_t picorc_advertised_service_uuid128_le[] = {
+static const uint8_t picorc_adv_data[] = {
+	2, BLUETOOTH_DATA_TYPE_FLAGS, APP_BT_AD_FLAGS,
+	7, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'P', 'i', 'c', 'o', 'R', 'C',
+	17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS,
 	0x43, 0x52, 0x4F, 0x43, 0x49, 0x50, 0x2C, 0x9F,
 	0x4B, 0x4E, 0x2D, 0x2E, 0x01, 0xC0, 0xA4, 0xF7,
 };
+static_assert(sizeof picorc_adv_data <= 31, "picorc_adv_data too big");
 
 static const uni_bt_service_config_t service_config = {
 	.profile_data = picorc_bt_profile_data,
-	.advertised_name = "PicoRC",
-	.advertised_service_uuid128_le = picorc_advertised_service_uuid128_le,
+	.adv_data = picorc_adv_data,
+	.adv_data_len = (uint8_t)sizeof picorc_adv_data,
 	.on_att_server_ready = app_bt_on_att_server_ready,
 };
 
