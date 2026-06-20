@@ -34,9 +34,9 @@ static_assert(TASK_PRIO_6_REALTIME == (configMAX_PRIORITIES - 1U));
 
 static_assert(TASK_STACK_256 == configMINIMAL_STACK_SIZE);
 
-#define US_TO_TICKS(us) ((TickType_t)((((uint64_t)(us)) * configTICK_RATE_HZ + 999'999ULL) / 1'000'000ULL))
-#define MS_TO_TICKS(ms) US_TO_TICKS(((uint64_t)(ms)) * US_IN_MS)
-#define SECONDS_TO_TICKS(seconds) US_TO_TICKS(((uint64_t)(seconds)) * US_IN_SECOND)
+#define US_TO_TICKS(us) ((TickType_t)((((u64)(us)) * configTICK_RATE_HZ + 999'999ULL) / 1'000'000ULL))
+#define MS_TO_TICKS(ms) US_TO_TICKS(((u64)(ms)) * US_IN_MS)
+#define SECONDS_TO_TICKS(seconds) US_TO_TICKS(((u64)(seconds)) * US_IN_SECOND)
 
 typedef void (*task_function_t)(void *task_parameter);
 
@@ -67,7 +67,7 @@ void task_heartbeat(void *task_parameter);
 [[noreturn]]
 void task_system_monitor(void *task_parameter);
 
-#define TASK_STARTUP_STACK_DEPTH TASK_STACK_256
+#define TASK_STARTUP_STACK_DEPTH TASK_STACK_512
 #define TASK_STARTUP_PRIORITY TASK_PRIO_6_REALTIME
 #define TASK_STARTUP_TICKS SECONDS_TO_TICKS(1)
 [[noreturn]]

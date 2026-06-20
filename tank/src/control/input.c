@@ -9,7 +9,6 @@
 #include "defines/config.h"
 
 static critical_section_t input_critical_section;
-static control_input_state_t latest_input = { 0 };
 
 static i32 xy_dead_zone(const i32 val) {
 	return abs(val) <= XY_DEAD_ZONE ? 0 : val;
@@ -19,35 +18,32 @@ static i32 trig_dead_zone(const i32 val) {
 	return val <= TRIG_DEAD_ZONE ? 0 : val;
 }
 
-static control_input_state_t neutral_input(const bool connected) {
-	control_input_state_t input = { 0 };
+static control_state_t neutral_input(const bool connected) {
+	control_state_t input = { 0 };
 	input.connected = connected;
 	return input;
 }
 
 void control_input_init() {
 	critical_section_init(&input_critical_section);
-	latest_input = neutral_input(false);
+	desired_state.control = neutral_input(false);
 }
 
 void control_input_on_connected() {
 	critical_section_enter_blocking(&input_critical_section);
-	latest_input.connected = true;
+	desired_state.control.connected = true;
 	critical_section_exit(&input_critical_section);
 }
 
 void control_input_on_disconnected() {
 	const auto input = neutral_input(false);
-
-	critical_section_enter_blocking(&input_critical_section);
-	latest_input = input;
-	critical_section_exit(&input_critical_section);
+	sync_copy(&input_critical_section, &desired_state.control, &input, sizeof desired_state.control);
 }
 
 void control_input_on_gamepad(const uni_gamepad_t *gamepad) {
 	if (gamepad == nullptr) return;
 
-	control_input_state_t input = {
+	control_state_t input = {
 		.x = xy_dead_zone(gamepad->axis_x),
 		.y = xy_dead_zone(gamepad->axis_y),
 		.rx = xy_dead_zone(gamepad->axis_rx),
@@ -67,15 +63,5 @@ void control_input_on_gamepad(const uni_gamepad_t *gamepad) {
 		.connected = true,
 	};
 
-	critical_section_enter_blocking(&input_critical_section);
-	latest_input = input;
-	critical_section_exit(&input_critical_section);
-}
-
-void control_input_sample(control_input_state_t *input) {
-	if (input == nullptr) return;
-
-	critical_section_enter_blocking(&input_critical_section);
-	*input = latest_input;
-	critical_section_exit(&input_critical_section);
+	sync_copy(&input_critical_section, &desired_state.control, &input, sizeof desired_state.control);
 }

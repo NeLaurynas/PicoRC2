@@ -13,10 +13,7 @@ void task_control_actuation(void *task_parameter) {
 
 	while (true) {
 		(void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-		control_input_state_t input;
-		state_sampled_input_get(&input);
-		control_actuation_apply(&input);
+		control_actuation_apply();
 	}
 }
 

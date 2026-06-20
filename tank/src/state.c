@@ -7,9 +7,10 @@
 
 #include "defines/config.h"
 
-static critical_section_t sampled_input_critical_section;
 static critical_section_t telemetry_critical_section;
 static critical_section_t system_telemetry_critical_section;
+
+desired_state_t desired_state = { 0 };
 
 state_t state = {
 	.tasks = {
@@ -52,55 +53,26 @@ state_t state = {
 };
 
 void state_init() {
-	critical_section_init(&sampled_input_critical_section);
 	critical_section_init(&telemetry_critical_section);
 	critical_section_init(&system_telemetry_critical_section);
 }
 
-void state_sampled_input_set(const control_input_state_t *input) {
-	configASSERT(input != nullptr);
-
-	critical_section_enter_blocking(&sampled_input_critical_section);
-	state.sampled_input = *input;
-	critical_section_exit(&sampled_input_critical_section);
-}
-
-void state_sampled_input_get(control_input_state_t *input) {
-	configASSERT(input != nullptr);
-
-	critical_section_enter_blocking(&sampled_input_critical_section);
-	*input = state.sampled_input;
-	critical_section_exit(&sampled_input_critical_section);
-}
-
-void state_telemetry_set(const telemetry_t *telemetry) {
+void state_telemetry_sync_store(const telemetry_t *telemetry) {
 	configASSERT(telemetry != nullptr);
-
-	critical_section_enter_blocking(&telemetry_critical_section);
-	state.telemetry = *telemetry;
-	critical_section_exit(&telemetry_critical_section);
+	sync_copy(&telemetry_critical_section, &state.telemetry, telemetry, sizeof state.telemetry);
 }
 
-void state_telemetry_get(telemetry_t *telemetry) {
+void state_telemetry_sync_load(telemetry_t *telemetry) {
 	configASSERT(telemetry != nullptr);
-
-	critical_section_enter_blocking(&telemetry_critical_section);
-	*telemetry = state.telemetry;
-	critical_section_exit(&telemetry_critical_section);
+	sync_copy(&telemetry_critical_section, telemetry, &state.telemetry, sizeof state.telemetry);
 }
 
-void state_system_telemetry_set(const system_telemetry_t *telemetry) {
+void state_system_telemetry_sync_store(const system_telemetry_t *telemetry) {
 	configASSERT(telemetry != nullptr);
-
-	critical_section_enter_blocking(&system_telemetry_critical_section);
-	state.system_telemetry = *telemetry;
-	critical_section_exit(&system_telemetry_critical_section);
+	sync_copy(&system_telemetry_critical_section, &state.system_telemetry, telemetry, sizeof state.system_telemetry);
 }
 
-void state_system_telemetry_get(system_telemetry_t *telemetry) {
+void state_system_telemetry_sync_load(system_telemetry_t *telemetry) {
 	configASSERT(telemetry != nullptr);
-
-	critical_section_enter_blocking(&system_telemetry_critical_section);
-	*telemetry = state.system_telemetry;
-	critical_section_exit(&system_telemetry_critical_section);
+	sync_copy(&system_telemetry_critical_section, telemetry, &state.system_telemetry, sizeof state.system_telemetry);
 }

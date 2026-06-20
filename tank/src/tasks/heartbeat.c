@@ -4,14 +4,14 @@
 #include <FreeRTOS.h>
 #include <stddef.h>
 #include <task.h>
+#include <utils.h>
 
 #include "state.h"
 #include "tasks/tasks.h"
-#include "utils.h"
 
 static void update_tasks(task_t *const tasks[], const size_t task_count) {
 	for (size_t i = 0; i < task_count; i++) {
-		task_t *task = tasks[i];
+		task_t *const task = tasks[i];
 		if (unlikely(task == nullptr) || unlikely(task->handle == nullptr)) continue;
 
 		const auto stack_watermark = uxTaskGetStackHighWaterMark(task->handle);
@@ -21,11 +21,11 @@ static void update_tasks(task_t *const tasks[], const size_t task_count) {
 
 static void print_tasks(task_t *const tasks[], const size_t task_count) {
 	for (size_t i = 0; i < task_count; i++) {
-		const task_t *task = tasks[i];
+		const task_t *const task = tasks[i];
 		if (unlikely(task == nullptr)) continue;
 
 		utils_printf(
-			"task %s: stack used - %lu/%lu words | delay overruns - %ld\n",
+			"%s: stack - %lu/%lu words | overruns - %ld\n",
 			task->name,
 			(unsigned long)task->stack_used,
 			(unsigned long)task->stack_depth,

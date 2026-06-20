@@ -3,13 +3,13 @@
 
 #include "turret_ctrl.h"
 
-#include <stdlib.h>
 #include <hardware/dma.h>
 #include <hardware/gpio.h>
 #include <hardware/pwm.h>
 #include <pico/time.h>
+#include <stdlib.h>
+#include <utils.h>
 
-#include "utils.h"
 #include "defines/config.h"
 
 static uint slice1 = 0;
@@ -20,8 +20,8 @@ static constexpr u16 pwm_full = pwm_top + 1;
 
 static void buffer_set_pwm(const uint channel, const u16 pwm) {
 	buffer[0] = (channel == 1)
-		? (buffer[0] & 0x0000FFFF) | ((u32)pwm << 16)
-		: (buffer[0] & 0xFFFF0000) | (pwm & 0xFFFF);
+		? (buffer[0] & 0b00000000'00000000'11111111'11111111u) | ((u32)pwm << 16)
+		: (buffer[0] & 0b11111111'11111111'00000000'00000000u) | (pwm & 0b11111111'11111111u);
 }
 
 void turret_ctrl_init() {

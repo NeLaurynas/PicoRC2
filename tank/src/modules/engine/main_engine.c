@@ -7,9 +7,10 @@
 #include <hardware/gpio.h>
 #include <hardware/pwm.h>
 #include <pico/time.h>
+#include <utils.h>
 
-#include "utils.h"
 #include "defines/config.h"
+#include "state.h"
 
 static u8 slice1 = 0;
 static u8 slice2 = 0;
@@ -21,8 +22,8 @@ static constexpr u16 pwm_full = pwm_top + 1;
 
 static void buffer_set_pwm(const uint channel, const u16 pwm) {
 	buffer[0] = (channel == 1)
-		? (buffer[0] & 0x0000FFFF) | ((u32)pwm << 16)
-		: (buffer[0] & 0xFFFF0000) | (pwm & 0xFFFF);
+		? (buffer[0] & 0b00000000'00000000'11111111'11111111u) | ((u32)pwm << 16)
+		: (buffer[0] & 0b11111111'11111111'00000000'00000000u) | (pwm & 0b11111111'11111111u);
 }
 
 static void pwm_slice_init(const uint slice, const float clk_div) {
@@ -59,7 +60,7 @@ void main_engine_init() {
 	channel2 = pwm_gpio_to_channel(MOD_ENGINE_MAIN_PWM2);
 
 	const auto clk_div = utils_calculate_pio_clk_div(0.5f); // 3.f for 5 khz frequency (2.f for 7.5 khz 1.f for 15 khz)
-	utils_printf("MAIN ENGINE CLK DIV: %f\n", clk_div);
+	if (state.app_settings.debug_logs) utils_printf("MAIN ENGINE CLK DIV: %f\n", clk_div);
 
 	pwm_slice_init(slice1, clk_div);
 	pwm_slice_init(slice2, clk_div);
@@ -103,7 +104,7 @@ void main_engine_advanced(const i32 left, const i32 right) {
 	if (right < 0) pwm_right += 1;
 	adjust_pwm(&pwm_left);
 	adjust_pwm(&pwm_right);
-	utils_printf("%d<<>>%d\n", pwm_left, pwm_right);
+	if (state.app_settings.debug_logs) utils_printf("%d<<>>%d\n", pwm_left, pwm_right);
 
 	set_motor_ctrl(left, pwm_left, true);
 	set_motor_ctrl(right, pwm_right, false);
@@ -117,8 +118,8 @@ void main_engine_basic(const i32 gas, const i32 steer, i32 *left, i32 *right) {
 	auto gas_left = gas;
 	auto gas_right = gas;
 
-	i32 *gas_active = go_left ? &gas_left : &gas_right;
-	i32 *gas_passive = go_left ? &gas_right : &gas_left;
+	i32 *const gas_active = go_left ? &gas_left : &gas_right;
+	i32 *const gas_passive = go_left ? &gas_right : &gas_left;
 	const u8 steer_split = 50;
 
 	if (gas == 0) {
@@ -146,7 +147,9 @@ void main_engine_basic(const i32 gas, const i32 steer, i32 *left, i32 *right) {
 	u16 pwm_right = utils_scaled_pwm_percentage(gas_right, TRIG_DEAD_ZONE, TRIG_MAX);
 	adjust_pwm(&pwm_left);
 	adjust_pwm(&pwm_right);
-	utils_printf("%c%d<<%ld>>%c%d\n", gas_left < 0 ? '-' : '+', pwm_left, gas, gas_right < 0 ? '-' : '+', pwm_right);
+	if (state.app_settings.debug_logs) {
+		utils_printf("%c%d<<%ld>>%c%d\n", gas_left < 0 ? '-' : '+', pwm_left, gas, gas_right < 0 ? '-' : '+', pwm_right);
+	}
 
 	set_motor_ctrl(gas_left, pwm_left, true);
 	set_motor_ctrl(gas_right, pwm_right, false);

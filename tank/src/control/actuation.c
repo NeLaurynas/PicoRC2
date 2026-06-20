@@ -3,11 +3,12 @@
 
 #include "control/actuation.h"
 
+#include <utils.h>
+
 #include "defines/config.h"
 #include "modules/engine/main_engine.h"
 #include "modules/engine/turret_ctrl.h"
 #include "modules/leds/leds.h"
-#include "utils.h"
 
 static i8 normalized_command(const i32 val, const i32 deadzone, const i32 max_val) {
 	const auto magnitude = utils_scaled_pwm_percentage(val, deadzone, max_val);
@@ -20,107 +21,104 @@ void control_actuation_init() {
 	turret_ctrl_init();
 }
 
-void control_actuation_apply(const control_input_state_t *input) {
-	if (input == nullptr) return;
-
-	control_actuation_state_t *current_state = &state.actuation;
+void control_actuation_apply() {
 	telemetry_t telemetry;
-	state_telemetry_get(&telemetry);
+	state_telemetry_sync_load(&telemetry);
 
-	if (current_state->btn_start != input->btn_start || current_state->btn_select != input->btn_select) {
-		current_state->btn_start = input->btn_start;
-		current_state->btn_select = input->btn_select;
-		const bool toggle_advanced = input->btn_start && input->btn_select;
+	if (state.control.btn_start != desired_state.control.btn_start || state.control.btn_select != desired_state.control.btn_select) {
+		state.control.btn_start = desired_state.control.btn_start;
+		state.control.btn_select = desired_state.control.btn_select;
+		const bool toggle_advanced = desired_state.control.btn_start && desired_state.control.btn_select;
 		if (toggle_advanced) {
-			current_state->advanced_mode = !current_state->advanced_mode;
+			state.control.advanced_mode = !state.control.advanced_mode;
 		}
 	}
 
-	if (current_state->btn_a != input->btn_a || current_state->btn_y != input->btn_y) {
-		current_state->btn_a = input->btn_a;
-		current_state->btn_y = input->btn_y;
-		if (input->btn_a || input->btn_y) current_state->white_leds = !current_state->white_leds;
-		leds_toggle_white(current_state->white_leds);
+	if (state.control.btn_a != desired_state.control.btn_a || state.control.btn_y != desired_state.control.btn_y) {
+		state.control.btn_a = desired_state.control.btn_a;
+		state.control.btn_y = desired_state.control.btn_y;
+		if (desired_state.control.btn_a || desired_state.control.btn_y) state.control.white_leds = !state.control.white_leds;
+		leds_toggle_white(state.control.white_leds);
 	}
-	if (current_state->btn_x != input->btn_x || current_state->btn_b != input->btn_b) {
-		current_state->btn_x = input->btn_x;
-		current_state->btn_b = input->btn_b;
-		if (input->btn_x || input->btn_b) current_state->red_led = !current_state->red_led;
-		leds_toggle_red(current_state->red_led);
+	if (state.control.btn_x != desired_state.control.btn_x || state.control.btn_b != desired_state.control.btn_b) {
+		state.control.btn_x = desired_state.control.btn_x;
+		state.control.btn_b = desired_state.control.btn_b;
+		if (desired_state.control.btn_x || desired_state.control.btn_b) state.control.red_led = !state.control.red_led;
+		leds_toggle_red(state.control.red_led);
 	}
 
-	if (!input->connected) {
-		if (current_state->connected) {
+	if (!desired_state.control.connected) {
+		if (state.control.connected) {
 			main_engine_basic(0, 0, nullptr, nullptr);
 			turret_ctrl_rotate(0);
 			turret_ctrl_lift(0);
 		}
 
-		current_state->x = 0;
-		current_state->y = 0;
-		current_state->rx = 0;
-		current_state->ry = 0;
-		current_state->dpad_up = false;
-		current_state->dpad_down = false;
-		current_state->dpad_left = false;
-		current_state->dpad_right = false;
-		current_state->throttle = 0;
-		current_state->brake = 0;
-		current_state->connected = false;
+		state.control.x = 0;
+		state.control.y = 0;
+		state.control.rx = 0;
+		state.control.ry = 0;
+		state.control.dpad_up = false;
+		state.control.dpad_down = false;
+		state.control.dpad_left = false;
+		state.control.dpad_right = false;
+		state.control.throttle = 0;
+		state.control.brake = 0;
+		state.control.connected = false;
 		telemetry = (telemetry_t){
 			.connected = false,
-			.advanced_mode = current_state->advanced_mode,
-			.white_leds = current_state->white_leds,
-			.red_led = current_state->red_led,
+			.advanced_mode = state.control.advanced_mode,
+			.white_leds = state.control.white_leds,
+			.red_led = state.control.red_led,
 		};
-		state_telemetry_set(&telemetry);
+		state_telemetry_sync_store(&telemetry);
 		return;
 	}
 
-	current_state->connected = true;
+	state.control.connected = true;
 	telemetry.connected = true;
-	telemetry.advanced_mode = current_state->advanced_mode;
-	telemetry.white_leds = current_state->white_leds;
-	telemetry.red_led = current_state->red_led;
+	telemetry.advanced_mode = state.control.advanced_mode;
+	telemetry.white_leds = state.control.white_leds;
+	telemetry.red_led = state.control.red_led;
 
-	if (current_state->advanced_mode) {
-		if (current_state->y != input->y || current_state->ry != input->ry) {
-			current_state->y = input->y;
-			current_state->ry = input->ry;
-			main_engine_advanced(input->y, input->ry);
-			telemetry.main_left = normalized_command(input->y, XY_DEAD_ZONE, XY_MAX);
-			telemetry.main_right = normalized_command(input->ry, XY_DEAD_ZONE, XY_MAX);
+	if (state.control.advanced_mode) {
+		if (state.control.y != desired_state.control.y || state.control.ry != desired_state.control.ry) {
+			state.control.y = desired_state.control.y;
+			state.control.ry = desired_state.control.ry;
+			main_engine_advanced(desired_state.control.y, desired_state.control.ry);
+			telemetry.main_left = normalized_command(desired_state.control.y, XY_DEAD_ZONE, XY_MAX);
+			telemetry.main_right = normalized_command(desired_state.control.ry, XY_DEAD_ZONE, XY_MAX);
 		}
 	} else {
 		if (
-			current_state->brake != input->brake || current_state->throttle != input->throttle ||
-			current_state->x != input->x
+			state.control.brake != desired_state.control.brake || state.control.throttle != desired_state.control.throttle ||
+			state.control.x != desired_state.control.x
 		) {
-			current_state->brake = input->brake;
-			current_state->throttle = input->throttle;
-			current_state->x = input->x;
+			state.control.brake = desired_state.control.brake;
+			state.control.throttle = desired_state.control.throttle;
+			state.control.x = desired_state.control.x;
 			i32 left;
 			i32 right;
-			main_engine_basic(input->throttle - input->brake, input->x, &left, &right);
+			main_engine_basic(desired_state.control.throttle - desired_state.control.brake, desired_state.control.x, &left, &right);
 			telemetry.main_left = normalized_command(left, TRIG_DEAD_ZONE, TRIG_MAX);
 			telemetry.main_right = normalized_command(right, TRIG_DEAD_ZONE, TRIG_MAX);
 		}
 	}
 
-	if (current_state->dpad_left != input->dpad_left || current_state->dpad_right != input->dpad_right) {
-		current_state->dpad_left = input->dpad_left;
-		current_state->dpad_right = input->dpad_right;
-		const i32 rotate = (input->dpad_left ? -XY_MAX : 0) + (input->dpad_right ? XY_MAX : 0);
+	if (state.control.dpad_left != desired_state.control.dpad_left || state.control.dpad_right != desired_state.control.dpad_right) {
+		state.control.dpad_left = desired_state.control.dpad_left;
+		state.control.dpad_right = desired_state.control.dpad_right;
+		const i32 rotate = (desired_state.control.dpad_left ? -XY_MAX : 0) + (desired_state.control.dpad_right ? XY_MAX : 0);
 		turret_ctrl_rotate(rotate);
 		telemetry.turret_rotate = normalized_command(rotate, XY_DEAD_ZONE, XY_MAX);
 	}
-	if (current_state->dpad_up != input->dpad_up || current_state->dpad_down != input->dpad_down) {
-		current_state->dpad_up = input->dpad_up;
-		current_state->dpad_down = input->dpad_down;
-		const i32 lift = (input->dpad_up ? XY_MAX : 0) + (input->dpad_down ? -XY_MAX : 0);
+	if (state.control.dpad_up != desired_state.control.dpad_up || state.control.dpad_down != desired_state.control.dpad_down) {
+		state.control.dpad_up = desired_state.control.dpad_up;
+		state.control.dpad_down = desired_state.control.dpad_down;
+		const i32 lift = (desired_state.control.dpad_up ? XY_MAX : 0) + (desired_state.control.dpad_down ? -XY_MAX : 0);
 		turret_ctrl_lift(lift);
 		telemetry.turret_lift = normalized_command(lift, XY_DEAD_ZONE + 200, XY_MAX);
 	}
 
-	state_telemetry_set(&telemetry);
+	state_telemetry_sync_store(&telemetry);
 }

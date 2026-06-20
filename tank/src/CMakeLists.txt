@@ -35,8 +35,24 @@ project(${PROJECT_NAME} C CXX ASM)
 
 pico_sdk_init()
 
+# Flash layout.
+if (NOT DEFINED FLASH_TOTAL_BYTES)
+	set(FLASH_TOTAL_BYTES 4194304 CACHE STRING "Total on-board flash size (bytes)") # Pico 2 flash size - 4 mB
+endif ()
+
+# Reserve 1 MiB for LittleFS below BTstack's TLV bank and the RP2350 E10 tail sector.
+set(MOD_STORAGE_SECTOR_SIZE 4096 CACHE STRING "Flash sector size (bytes)" FORCE)
+set(MOD_STORAGE_SECTORS 256 CACHE STRING "Number of sectors to reserve for LittleFS" FORCE)
+set(BTSTACK_FLASH_BANK_TOTAL_SIZE 8192 CACHE STRING "BTstack TLV flash bank size (bytes)" FORCE)
+set(BTSTACK_FLASH_RESERVED_BYTES 12288 CACHE STRING "Flash reserved above LittleFS for BTstack and RP2350 E10" FORCE)
+math(EXPR MOD_STORAGE_BYTES "${MOD_STORAGE_SECTORS} * ${MOD_STORAGE_SECTOR_SIZE}")
+math(EXPR BTSTACK_FLASH_BANK_OFFSET "${FLASH_TOTAL_BYTES} - ${BTSTACK_FLASH_RESERVED_BYTES}")
+math(EXPR MOD_STORAGE_OFFSET "${BTSTACK_FLASH_BANK_OFFSET} - ${MOD_STORAGE_BYTES}")
+set(APP_FLASH_BYTES "${MOD_STORAGE_OFFSET}")
+
 set(BLUEPAD32_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../lib/bluepad32")
 set(PICO_SHARED_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../lib/pico-shared")
+set(LITTLEFS_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../lib/littlefs")
 set(BTSTACK_ROOT "${PICO_SDK_PATH}/lib/btstack")
 
 set(FREERTOS_CONFIG_FILE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
@@ -88,6 +104,11 @@ add_subdirectory("${BLUEPAD32_ROOT}/src/components/bluepad32" "${CMAKE_BINARY_DI
 target_include_directories(bluepad32 PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}
 )
+target_compile_definitions(bluepad32 PRIVATE
+		PICO_FLASH_SIZE_BYTES=${FLASH_TOTAL_BYTES}
+		PICO_FLASH_BANK_TOTAL_SIZE=${BTSTACK_FLASH_BANK_TOTAL_SIZE}
+		PICO_FLASH_BANK_STORAGE_OFFSET=${BTSTACK_FLASH_BANK_OFFSET}
+)
 
 add_executable(${PROJECT_NAME}
 		FreeRTOSConfig.h
@@ -105,6 +126,10 @@ add_executable(${PROJECT_NAME}
 		shared_config.h
 		state.c
 		state.h
+		storage/app_lfs.c
+		storage/app_lfs.h
+		storage/app_storage.c
+		storage/app_storage.h
 		tasks/control_actuation.c
 		tasks/control_input.c
 		tasks/heartbeat.c
@@ -126,6 +151,17 @@ add_executable(${PROJECT_NAME}
 
 pico_set_program_name(${PROJECT_NAME} "${PROJECT_NAME}")
 pico_set_program_version(${PROJECT_NAME} "0.1.0")
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+		PICO_FLASH_SIZE_BYTES=${FLASH_TOTAL_BYTES}
+		MOD_STORAGE_SECTORS=${MOD_STORAGE_SECTORS}
+		MOD_STORAGE_SECTOR_SIZE=${MOD_STORAGE_SECTOR_SIZE}
+		MOD_STORAGE_PAGE_SIZE=256
+		MOD_STORAGE_BYTES=${MOD_STORAGE_BYTES}
+		MOD_STORAGE_OFFSET=${MOD_STORAGE_OFFSET}
+		PICO_FLASH_BANK_TOTAL_SIZE=${BTSTACK_FLASH_BANK_TOTAL_SIZE}
+		PICO_FLASH_BANK_STORAGE_OFFSET=${BTSTACK_FLASH_BANK_OFFSET}
+)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
 		${BASE_CPU_FEATURE_FLAGS}
@@ -172,8 +208,36 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 		${BTSTACK_ROOT}/src
 )
 
+add_library(littlefs STATIC
+		${LITTLEFS_SOURCE_DIR}/lfs.c
+		${LITTLEFS_SOURCE_DIR}/lfs.h
+		${LITTLEFS_SOURCE_DIR}/lfs_util.c
+		${LITTLEFS_SOURCE_DIR}/lfs_util.h
+)
+target_compile_definitions(littlefs PUBLIC
+		LFS_NO_DEBUG
+		LFS_NO_ERROR
+		LFS_NO_MALLOC
+		LFS_NO_WARN
+)
+target_include_directories(littlefs PUBLIC
+		${LITTLEFS_SOURCE_DIR}
+)
+target_compile_options(littlefs PRIVATE
+		${BASE_CPU_FEATURE_FLAGS}
+		${BASE_SECTION_FLAGS}
+		${BASE_WARNING_FLAGS}
+		-Wno-unused-function
+		$<$<CONFIG:Debug>:${BASE_DEBUG_FLAGS}>
+		$<$<CONFIG:Release>:${BASE_RELEASE_FLAGS}>
+)
+target_link_options(littlefs PRIVATE
+		${BASE_CPU_FEATURE_FLAGS}
+)
+
 target_link_libraries(${PROJECT_NAME}
 		FreeRTOS-Kernel-Heap4
+		littlefs
 		pico_shared_frtos
 		pico_shared_utils
 		pico_shared_memory
@@ -189,10 +253,19 @@ target_link_libraries(${PROJECT_NAME}
 		pico_btstack_cyw43
 		hardware_clocks
 		hardware_dma
+		hardware_flash
 		hardware_pio
 		hardware_pwm
+		pico_flash
 		$<$<CONFIG:Debug>:hardware_uart>
 )
+
+configure_file(
+		"${PICO_SHARED_SOURCE_DIR}/memmap_storage.ld.in"
+		${CMAKE_CURRENT_BINARY_DIR}/memmap_storage.ld
+		@ONLY
+)
+pico_set_linker_script(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR}/memmap_storage.ld)
 
 pico_add_extra_outputs(${PROJECT_NAME})
 

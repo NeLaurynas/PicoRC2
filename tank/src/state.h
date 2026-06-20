@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include <pico/sync.h>
+#include <string.h>
+
 #include "shared_config.h"
 #include "tasks/tasks.h"
 
@@ -32,42 +35,13 @@ typedef struct {
 	i32 throttle;
 	i32 brake;
 
-	bool connected;
-} control_input_state_t;
-
-typedef struct {
-	i32 x;
-	i32 y;
-
-	i32 rx;
-	i32 ry;
-
-	bool btn_a;
-	bool btn_x;
-	bool btn_b;
-	bool btn_y;
-
-	bool btn_start;
-	bool btn_select;
-
-	bool dpad_up;
-	bool dpad_down;
-	bool dpad_left;
-	bool dpad_right;
-
+	// derived, owned by the applied state only (unused in desired_state)
 	bool white_leds;
 	bool red_led;
-
 	bool advanced_mode;
 
-	bool shoulder_l;
-	bool shoulder_r;
-
-	i32 throttle;
-	i32 brake;
-
 	bool connected;
-} control_actuation_state_t;
+} control_state_t;
 
 typedef struct {
 	bool connected;
@@ -87,13 +61,23 @@ typedef struct {
 	u16 freertos_total_kib;
 	u16 system_used_kib;
 	u16 system_total_kib;
+	u16 boot_count;
 } system_telemetry_t;
 
 typedef struct {
-	control_input_state_t sampled_input;
-	control_actuation_state_t actuation;
+	bool debug_logs;
+} app_settings_t;
+
+typedef struct {
+	u16 boot_count;
+} app_data_t;
+
+typedef struct {
+	control_state_t control;
 	telemetry_t telemetry;
 	system_telemetry_t system_telemetry;
+	app_settings_t app_settings;
+	app_data_t app_data;
 
 	struct {
 		task_t startup;
@@ -104,12 +88,24 @@ typedef struct {
 	} tasks;
 } state_t;
 
+typedef struct {
+	control_state_t control;
+} desired_state_t;
+
 extern state_t state;
+extern desired_state_t desired_state;
 
 void state_init();
-void state_sampled_input_set(const control_input_state_t *input);
-void state_sampled_input_get(control_input_state_t *input);
-void state_telemetry_set(const telemetry_t *telemetry);
-void state_telemetry_get(telemetry_t *telemetry);
-void state_system_telemetry_set(const system_telemetry_t *telemetry);
-void state_system_telemetry_get(system_telemetry_t *telemetry);
+
+// Copy `size` bytes between `dst` and `src` while holding `cs`, so the shared
+// side is stored/loaded atomically with respect to other tasks.
+static inline void sync_copy(critical_section_t *const cs, void *const dst, const void *const src, const size_t size) {
+	critical_section_enter_blocking(cs);
+	memcpy(dst, src, size);
+	critical_section_exit(cs);
+}
+
+void state_telemetry_sync_store(const telemetry_t *telemetry);
+void state_telemetry_sync_load(telemetry_t *telemetry);
+void state_system_telemetry_sync_store(const system_telemetry_t *telemetry);
+void state_system_telemetry_sync_load(system_telemetry_t *telemetry);

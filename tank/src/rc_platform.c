@@ -1,10 +1,9 @@
 // Copyright (C) 2025 Laurynas 'Deviltry' Ekekeke
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <pico/cyw43_arch.h>
 #include <stddef.h>
 #include <string.h>
-
-#include <pico/cyw43_arch.h>
 #include <uni.h>
 
 #include "control/input.h"
@@ -31,7 +30,7 @@ static void rc_platform_init(int argc, const char **argv) {
 	uni_gamepad_set_mappings(&mappings);
 }
 
-static void rc_platform_on_init_complete(void) {
+static void rc_platform_on_init_complete() {
 	logi("rc_platform: on_init_complete()\n");
 
 	uni_bt_del_keys_unsafe();
@@ -45,7 +44,7 @@ static void rc_platform_on_init_complete(void) {
 	app_bt_start();
 }
 
-static uni_error_t rc_platform_on_device_discovered(bd_addr_t addr, const char *name, uint16_t cod, uint8_t rssi) {
+static uni_error_t rc_platform_on_device_discovered(bd_addr_t addr, const char *name, u16 cod, u8 rssi) {
 	(void)addr;
 	ARG_UNUSED(name);
 	ARG_UNUSED(rssi);
@@ -116,7 +115,7 @@ static void trigger_event_on_gamepad(uni_hid_device_t *d) {
 	}
 }
 
-struct uni_platform *get_rc_platform(void) {
+struct uni_platform *get_rc_platform() {
 	static struct uni_platform plat = {
 		.name = "RC Platform",
 		.init = rc_platform_init,

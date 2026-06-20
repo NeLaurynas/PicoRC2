@@ -55,6 +55,9 @@ PRIMARY_SERVICE, F7A4C001-2E2D-4E4B-9F2C-5049434F5243
 // PicoRC typed notifications: log, tank telemetry, and system telemetry packets
 CHARACTERISTIC, F7A4C002-2E2D-4E4B-9F2C-5049434F5243, NOTIFY | DYNAMIC
 
+// PicoRC settings: [version=1, flags], flags bit 0 enables debug logs
+CHARACTERISTIC, F7A4C003-2E2D-4E4B-9F2C-5049434F5243, READ | WRITE | DYNAMIC
+
 // add Battery Service
 #import <battery_service.gatt>
 

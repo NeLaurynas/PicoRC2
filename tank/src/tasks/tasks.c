@@ -3,7 +3,7 @@
 
 #include "tasks.h"
 
-#include "utils.h"
+#include <utils.h>
 
 void tasks_create(task_t *task) {
 	configASSERT(task != nullptr);
@@ -34,4 +34,3 @@ void tasks_delay(task_t *task) {
 		task->delay_overruns++;
 	}
 }
-

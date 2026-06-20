@@ -4,8 +4,8 @@
 #include "leds.h"
 
 #include <hardware/gpio.h>
+#include <utils.h>
 
-#include "utils.h"
 #include "defines/config.h"
 
 void leds_init() {

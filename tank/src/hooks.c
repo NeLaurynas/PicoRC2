@@ -5,8 +5,7 @@
 
 #include <portable.h>
 #include <stdio.h>
-
-#include "utils.h"
+#include <utils.h>
 
 [[noreturn]]
 void vApplicationStackOverflowHook(TaskHandle_t task, char *task_name) {
