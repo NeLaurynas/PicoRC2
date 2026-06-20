@@ -91,10 +91,20 @@ typedef struct {
 } system_telemetry_t;
 
 typedef struct {
+	bool debug_logs;
+} app_settings_t;
+
+typedef struct {
+	u16 boot_count;
+} app_data_t;
+
+typedef struct {
 	control_input_state_t sampled_input;
 	control_actuation_state_t actuation;
 	telemetry_t telemetry;
 	system_telemetry_t system_telemetry;
+	app_settings_t app_settings;
+	app_data_t app_data;
 
 	struct {
 		task_t startup;

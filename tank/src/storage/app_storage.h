@@ -3,15 +3,7 @@
 
 #pragma once
 
-#include "shared_config.h"
-
-typedef struct {
-	bool debug_logs;
-} app_settings_t;
-
-typedef struct {
-	u16 boot_count;
-} app_data_t;
+#include "state.h"
 
 [[nodiscard]]
 bool app_storage_init();
@@ -27,6 +19,3 @@ bool app_data_load(app_data_t *out);
 
 [[nodiscard]]
 bool app_data_save(const app_data_t *data);
-
-[[nodiscard]]
-u16 app_storage_boot_count();

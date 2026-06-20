@@ -30,7 +30,6 @@ typedef struct __attribute__((packed)) {
 } blob_header_t;
 
 static bool initialized = false;
-static app_data_t current_data = { 0 };
 
 static void default_settings(app_settings_t *settings) {
 	memset(settings, 0, sizeof *settings);
@@ -90,10 +89,6 @@ bool app_data_save(const app_data_t *data) {
 	return write_file(APP_FS_DATA_PATH, APP_DATA_MAGIC, APP_DATA_SCHEMA, data, sizeof *data);
 }
 
-u16 app_storage_boot_count() {
-	return current_data.boot_count;
-}
-
 bool app_storage_init() {
 	if (initialized) return true;
 
@@ -101,19 +96,16 @@ bool app_storage_init() {
 
 	if (!app_lfs_init()) return false;
 
-	app_settings_t settings;
-	if (!app_settings_load(&settings)) {
-		default_settings(&settings);
-		if (!app_settings_save(&settings)) return false;
+	if (!app_settings_load(&state.app_settings)) {
+		default_settings(&state.app_settings);
+		if (!app_settings_save(&state.app_settings)) return false;
 	}
 
-	app_data_t data;
-	if (!app_data_load(&data)) memset(&data, 0, sizeof data);
+	if (!app_data_load(&state.app_data)) memset(&state.app_data, 0, sizeof state.app_data);
 
-	if (data.boot_count < UINT16_MAX) data.boot_count++;
-	if (!app_data_save(&data)) return false;
+	if (state.app_data.boot_count < UINT16_MAX) state.app_data.boot_count++;
+	if (!app_data_save(&state.app_data)) return false;
 
-	current_data = data;
 	initialized = true;
 	return true;
 }

@@ -10,6 +10,7 @@
 
 #include "modules/app_bt/picorc_bt_service.gatt.h"
 #include "state.h"
+#include "storage/app_storage.h"
 
 #define ATT_DEFAULT_MTU_BYTES 23
 #define LOG_PAYLOAD_MAX 64
@@ -20,6 +21,9 @@
 #define TANK_STATE_LEN 5
 #define SYSTEM_STATE_VERSION 2
 #define SYSTEM_STATE_LEN 12
+#define APP_SETTINGS_VERSION 1
+#define APP_SETTINGS_LEN 2
+#define APP_SETTINGS_DEBUG_LOGS_FLAG 0b00000001
 #define TANK_STATE_PERIOD_MS 50
 #define TANK_STATE_FULL_INTERVAL 10
 
@@ -55,6 +59,7 @@ static bool tank_state_queue_packet(app_bt_packet_type_t type, const uint8_t byt
                                     uint8_t changed_mask);
 static void system_state_queue_packet(void);
 static void system_state_build_current(uint8_t bytes[SYSTEM_STATE_LEN]);
+static void app_settings_build_current(uint8_t bytes[APP_SETTINGS_LEN]);
 
 static const uint8_t picorc_adv_data[] = {
 	2, BLUETOOTH_DATA_TYPE_FLAGS, APP_BT_AD_FLAGS,
@@ -145,6 +150,12 @@ static uint16_t app_bt_att_read_callback(hci_con_handle_t conn_handle, uint16_t 
 		case ATT_CHARACTERISTIC_F7A4C002_2E2D_4E4B_9F2C_5049434F5243_01_VALUE_HANDLE:
 			return 0;
 
+		case ATT_CHARACTERISTIC_F7A4C003_2E2D_4E4B_9F2C_5049434F5243_01_VALUE_HANDLE: {
+			uint8_t bytes[APP_SETTINGS_LEN];
+			app_settings_build_current(bytes);
+			return att_read_callback_handle_blob(bytes, sizeof bytes, offset, buffer, buffer_size);
+		}
+
 		case ATT_CHARACTERISTIC_F7A4C002_2E2D_4E4B_9F2C_5049434F5243_01_CLIENT_CONFIGURATION_HANDLE:
 			return read_notification_configuration(
 				conn_handle == notification_connection_handle && notification_enabled,
@@ -160,7 +171,7 @@ static uint16_t app_bt_att_read_callback(hci_con_handle_t conn_handle, uint16_t 
 
 static int app_bt_att_write_callback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode,
                                      uint16_t offset, uint8_t *buffer, uint16_t buffer_size) {
-	if (transaction_mode != ATT_TRANSACTION_MODE_NONE) return ATT_ERROR_SUCCESS;
+	if (transaction_mode != ATT_TRANSACTION_MODE_NONE) return ATT_ERROR_REQUEST_NOT_SUPPORTED;
 
 	switch (att_handle) {
 		case ATT_CHARACTERISTIC_F7A4C002_2E2D_4E4B_9F2C_5049434F5243_01_CLIENT_CONFIGURATION_HANDLE: {
@@ -181,6 +192,17 @@ static int app_bt_att_write_callback(hci_con_handle_t con_handle, uint16_t att_h
 				atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
 				notification_queue_clear();
 			}
+			return ATT_ERROR_SUCCESS;
+		}
+
+		case ATT_CHARACTERISTIC_F7A4C003_2E2D_4E4B_9F2C_5049434F5243_01_VALUE_HANDLE: {
+			if (offset != 0) return ATT_ERROR_INVALID_OFFSET;
+			if (buffer_size != APP_SETTINGS_LEN) return ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH;
+			if (buffer[0] != APP_SETTINGS_VERSION) return ATT_ERROR_VALUE_NOT_ALLOWED;
+
+			state.app_settings.debug_logs = (buffer[1] & APP_SETTINGS_DEBUG_LOGS_FLAG) != 0;
+
+			if (!app_settings_save(&state.app_settings)) return ATT_ERROR_UNLIKELY_ERROR;
 			return ATT_ERROR_SUCCESS;
 		}
 
@@ -484,4 +506,9 @@ static void system_state_build_current(uint8_t bytes[SYSTEM_STATE_LEN]) {
 	little_endian_store_16(bytes, 6, telemetry.system_used_kib);
 	little_endian_store_16(bytes, 8, telemetry.system_total_kib);
 	little_endian_store_16(bytes, 10, telemetry.boot_count);
+}
+
+static void app_settings_build_current(uint8_t bytes[APP_SETTINGS_LEN]) {
+	bytes[0] = APP_SETTINGS_VERSION;
+	bytes[1] = state.app_settings.debug_logs ? APP_SETTINGS_DEBUG_LOGS_FLAG : 0;
 }
