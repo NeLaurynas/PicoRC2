@@ -5,7 +5,6 @@
 #include <task.h>
 #include <utils.h>
 
-#include "control/input.h"
 #include "state.h"
 #include "tasks/tasks.h"
 
@@ -15,10 +14,6 @@ void task_control_input(void *task_parameter) {
 	state.tasks.control_input.last_wake = xTaskGetTickCount();
 
 	while (true) {
-		control_input_state_t input;
-		control_input_sample(&input);
-		state_sampled_input_set(&input);
-
 		if (likely(state.tasks.control_actuation.handle != nullptr)) {
 			xTaskNotifyGive(state.tasks.control_actuation.handle);
 		}
