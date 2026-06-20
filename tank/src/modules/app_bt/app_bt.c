@@ -202,9 +202,14 @@ static int app_bt_att_write_callback(hci_con_handle_t con_handle, u16 att_handle
 			if (buffer_size != APP_SETTINGS_LEN) return ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH;
 			if (buffer[0] != APP_SETTINGS_VERSION) return ATT_ERROR_VALUE_NOT_ALLOWED;
 
-			state.app_settings.debug_logs = (buffer[1] & APP_SETTINGS_DEBUG_LOGS_FLAG) != 0;
+			const bool debug_logs = (buffer[1] & APP_SETTINGS_DEBUG_LOGS_FLAG) != 0;
+			if (state.app_settings.debug_logs == debug_logs) return ATT_ERROR_SUCCESS;
 
-			if (!app_settings_save(&state.app_settings)) return ATT_ERROR_UNLIKELY_ERROR;
+			app_settings_t candidate = state.app_settings;
+			candidate.debug_logs = debug_logs;
+			if (!app_settings_save(&candidate)) return ATT_ERROR_UNLIKELY_ERROR;
+
+			state.app_settings = candidate;
 			return ATT_ERROR_SUCCESS;
 		}
 

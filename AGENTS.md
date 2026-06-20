@@ -32,5 +32,6 @@
 - Only edit `lib/pico-shared/**`. Treat other libraries under `lib/` as external (do not modify them) across all tasks unless explicitly instructed.
 
 ## Misc:
+- In this repo, `app` refers to the PicoRC iOS app under `app/`; use `firmware` or `tank` for the Pico RP2350 code.
 - Code style - mix between idiomatic language code and existing code style in files.
 - Skip tests unless asked to implement tests. When asked to write tests - make them thorough, executing unit tests is fast, so cover all edge cases, etc. Do not modify code if newly found edge cases are failing.

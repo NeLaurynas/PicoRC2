@@ -27,7 +27,10 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
     private var pendingDisconnectStatus: String?
     private var ignoredPeripheralIdentifiers: [UUID: Date] = [:]
     private var pendingShowDebugLogs: Bool?
+    private var inFlightShowDebugLogs: Bool?
     private var didRetrySettingsDiscovery = false
+    private var isSettingsDiscoveryInFlight = false
+    private var isSettingsReadInFlight = false
     private var packetParser = TelemetryPacketParser()
     private var logBuffer = PicoRCLogBuffer()
 
@@ -62,7 +65,10 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
         settingsCharacteristic = nil
         isDebugLogToggleEnabled = false
         pendingShowDebugLogs = nil
+        inFlightShowDebugLogs = nil
         didRetrySettingsDiscovery = false
+        isSettingsDiscoveryInFlight = false
+        isSettingsReadInFlight = false
     }
 
     private func shouldIgnore(_ peripheral: CBPeripheral) -> Bool {
@@ -109,59 +115,75 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
         appendLog(text)
     }
 
-    private func readSettingsIfPossible() {
-        guard let peripheral, let settingsCharacteristic else {
-            if !retrySettingsDiscoveryIfPossible(status: "Finding settings") {
-                status = "Connected"
-            }
+    private var connectedStatus: String {
+        if settingsCharacteristic != nil {
+            return "Connected"
+        }
+
+        return isSettingsDiscoveryInFlight ? "Finding settings" : "Connected, settings unavailable"
+    }
+
+    private func updateConnectedStatusIfIdle() {
+        guard !isSettingsReadInFlight, inFlightShowDebugLogs == nil else {
             return
         }
 
+        status = connectedStatus
+    }
+
+    private func readSettings(peripheral: CBPeripheral, characteristic: CBCharacteristic) {
+        isSettingsReadInFlight = true
+        isDebugLogToggleEnabled = false
         status = "Reading settings"
-        peripheral.readValue(for: settingsCharacteristic)
+        peripheral.readValue(for: characteristic)
     }
 
     private func handleSettings(_ data: Data) {
+        isSettingsReadInFlight = false
         guard let settings = AppSettings(data: data) else {
+            isDebugLogToggleEnabled = false
             status = "Settings format not supported"
             return
         }
 
         showDebugLogs = settings.showDebugLogs
         pendingShowDebugLogs = nil
-        status = "Connected"
+        isDebugLogToggleEnabled = true
+        updateConnectedStatusIfIdle()
     }
 
     func setShowDebugLogs(_ show: Bool) {
-        showDebugLogs = show
-        pendingShowDebugLogs = show
-
-        guard let peripheral, let settingsCharacteristic else {
-            if !retrySettingsDiscoveryIfPossible(status: "Finding settings") {
-                status = "Settings not available"
-            }
+        guard let peripheral, let settingsCharacteristic, isDebugLogToggleEnabled else {
+            status = self.settingsCharacteristic == nil ? "Settings not available" : "Settings not ready"
             return
         }
 
-        writeSettings(peripheral: peripheral, characteristic: settingsCharacteristic, showDebugLogs: show)
+        showDebugLogs = show
+        pendingShowDebugLogs = show
+        writePendingSettingsIfPossible(peripheral: peripheral, characteristic: settingsCharacteristic)
     }
 
-    private func writeSettings(peripheral: CBPeripheral, characteristic: CBCharacteristic, showDebugLogs: Bool) {
+    private func writePendingSettingsIfPossible(peripheral: CBPeripheral, characteristic: CBCharacteristic) {
+        guard inFlightShowDebugLogs == nil, let showDebugLogs = pendingShowDebugLogs else {
+            return
+        }
+
+        inFlightShowDebugLogs = showDebugLogs
         status = "Saving settings"
         peripheral.writeValue(AppSettings(showDebugLogs: showDebugLogs).data, for: characteristic, type: .withResponse)
     }
 
-    private func syncSettingsIfPossible() {
+    private func readSettingsIfPossible() {
         guard let peripheral, let settingsCharacteristic else {
-            readSettingsIfPossible()
+            isDebugLogToggleEnabled = false
+            if retrySettingsDiscoveryIfPossible(status: "Finding settings") {
+                return
+            }
+            updateConnectedStatusIfIdle()
             return
         }
 
-        if let pendingShowDebugLogs {
-            writeSettings(peripheral: peripheral, characteristic: settingsCharacteristic, showDebugLogs: pendingShowDebugLogs)
-        } else {
-            readSettingsIfPossible()
-        }
+        readSettings(peripheral: peripheral, characteristic: settingsCharacteristic)
     }
 
     private func retrySettingsDiscoveryIfPossible(status: String) -> Bool {
@@ -170,6 +192,7 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
         }
 
         didRetrySettingsDiscovery = true
+        isSettingsDiscoveryInFlight = true
         self.status = status
         peripheral.discoverCharacteristics(nil, for: picoRCService)
         return true
@@ -238,7 +261,7 @@ extension BluetoothStreamModel: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         status = "Discovering services"
-        peripheral.discoverServices(nil)
+        peripheral.discoverServices([PicoRCBluetoothProfile.serviceUUID])
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -280,30 +303,29 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
         guard service.uuid == PicoRCBluetoothProfile.serviceUUID else {
             return
         }
+        isSettingsDiscoveryInFlight = false
         guard error == nil, let characteristics = service.characteristics else {
             disconnect(peripheral, status: "Stream discovery failed")
             return
         }
 
-        guard let characteristic = characteristics.first(where: { $0.uuid == PicoRCBluetoothProfile.streamCharacteristicUUID }) else {
+        let characteristic = characteristics.first(where: { $0.uuid == PicoRCBluetoothProfile.streamCharacteristicUUID })
+        if let settings = characteristics.first(where: { $0.uuid == PicoRCBluetoothProfile.settingsCharacteristicUUID }) {
+            settingsCharacteristic = settings
+        }
+
+        guard streamCharacteristic != nil || characteristic != nil else {
             disconnect(peripheral, status: "Stream not found")
             return
         }
 
-        settingsCharacteristic = characteristics.first(where: { $0.uuid == PicoRCBluetoothProfile.settingsCharacteristicUUID })
-
-        guard streamCharacteristic == nil else {
-            if settingsCharacteristic != nil {
-                syncSettingsIfPossible()
-            } else {
-                status = "Connected"
-            }
-            return
+        if streamCharacteristic == nil, let characteristic {
+            streamCharacteristic = characteristic
+            status = "Subscribing to stream"
+            peripheral.setNotifyValue(true, for: characteristic)
         }
 
-        streamCharacteristic = characteristic
-        status = "Subscribing to stream"
-        peripheral.setNotifyValue(true, for: characteristic)
+        readSettingsIfPossible()
     }
 
     func peripheral(
@@ -321,8 +343,7 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
         }
 
         if characteristic.isNotifying {
-            isDebugLogToggleEnabled = true
-            syncSettingsIfPossible()
+            updateConnectedStatusIfIdle()
         } else {
             isDebugLogToggleEnabled = false
             status = "Stream subscription stopped"
@@ -332,6 +353,8 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error {
             if characteristic.uuid == PicoRCBluetoothProfile.settingsCharacteristicUUID {
+                isSettingsReadInFlight = false
+                isDebugLogToggleEnabled = false
                 status = "Settings read failed: \(error.localizedDescription)"
             }
             return
@@ -341,7 +364,7 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
         }
 
         if characteristic.uuid == PicoRCBluetoothProfile.streamCharacteristicUUID {
-            status = "Connected"
+            updateConnectedStatusIfIdle()
             handlePacket(data)
         } else if characteristic.uuid == PicoRCBluetoothProfile.settingsCharacteristicUUID {
             handleSettings(data)
@@ -355,12 +378,20 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
 
         if let error {
             status = "Settings write failed: \(error.localizedDescription)"
+            inFlightShowDebugLogs = nil
             pendingShowDebugLogs = nil
-            peripheral.readValue(for: characteristic)
+            readSettings(peripheral: peripheral, characteristic: characteristic)
             return
         }
 
-        pendingShowDebugLogs = nil
-        status = "Connected"
+        let writtenShowDebugLogs = inFlightShowDebugLogs
+        inFlightShowDebugLogs = nil
+
+        if pendingShowDebugLogs == writtenShowDebugLogs {
+            pendingShowDebugLogs = nil
+            updateConnectedStatusIfIdle()
+        } else {
+            writePendingSettingsIfPossible(peripheral: peripheral, characteristic: characteristic)
+        }
     }
 }
