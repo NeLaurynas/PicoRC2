@@ -60,12 +60,15 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
 
     private var centralManager: CBCentralManager!
     private var peripheral: CBPeripheral?
+    private var picoRCService: CBService?
     private var streamCharacteristic: CBCharacteristic?
     private var settingsCharacteristic: CBCharacteristic?
     private var retryWorkItem: DispatchWorkItem?
     private var pendingDisconnectStatus: String?
     private var ignoredPeripheralIdentifiers: [UUID: Date] = [:]
     private var tankStateBytes = Array(repeating: UInt8(0), count: 5)
+    private var pendingShowDebugLogs: Bool?
+    private var didRetrySettingsDiscovery = false
 
     override init() {
         super.init()
@@ -103,9 +106,12 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
         }
 
         self.peripheral = nil
+        picoRCService = nil
         streamCharacteristic = nil
         settingsCharacteristic = nil
         isDebugLogToggleEnabled = false
+        pendingShowDebugLogs = nil
+        didRetrySettingsDiscovery = false
     }
 
     private func shouldIgnore(_ peripheral: CBPeripheral) -> Bool {
@@ -153,7 +159,7 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
                 return
             }
 
-            appendLog(String(decoding: bytes.dropFirst(), as: UTF8.self))
+            handleLogPacket(bytes)
         case .tankStateFull:
             handleTankStateFull(bytes)
         case .tankStateDiff:
@@ -161,6 +167,24 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
         case .systemState:
             handleSystemState(bytes)
         }
+    }
+
+    private func handleLogPacket(_ bytes: [UInt8]) {
+        let text = String(decoding: bytes.dropFirst(), as: UTF8.self)
+        if !showDebugLogs && isDebugLogText(text) {
+            return
+        }
+
+        appendLog(text)
+    }
+
+    private func isDebugLogText(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return false
+        }
+
+        return trimmed.hasPrefix("MAIN ENGINE CLK DIV:") || (trimmed.contains("<<") && trimmed.contains(">>"))
     }
 
     private func handleTankStateFull(_ bytes: [UInt8]) {
@@ -240,7 +264,9 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
 
     private func readSettingsIfPossible() {
         guard let peripheral, let settingsCharacteristic else {
-            status = "Connected"
+            if !retrySettingsDiscoveryIfPossible(status: "Finding settings") {
+                status = "Connected"
+            }
             return
         }
 
@@ -256,18 +282,51 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
         }
 
         showDebugLogs = (bytes[1] & settingsDebugLogsFlag) != 0
+        pendingShowDebugLogs = nil
         status = "Connected"
     }
 
     func setShowDebugLogs(_ show: Bool) {
+        showDebugLogs = show
+        pendingShowDebugLogs = show
+
         guard let peripheral, let settingsCharacteristic else {
-            status = "Settings not available"
+            if !retrySettingsDiscoveryIfPossible(status: "Finding settings") {
+                status = "Settings not available"
+            }
             return
         }
 
-        showDebugLogs = show
+        writeSettings(peripheral: peripheral, characteristic: settingsCharacteristic, showDebugLogs: show)
+    }
+
+    private func writeSettings(peripheral: CBPeripheral, characteristic: CBCharacteristic, showDebugLogs: Bool) {
         status = "Saving settings"
-        peripheral.writeValue(settingsData(showDebugLogs: show), for: settingsCharacteristic, type: .withResponse)
+        peripheral.writeValue(settingsData(showDebugLogs: showDebugLogs), for: characteristic, type: .withResponse)
+    }
+
+    private func syncSettingsIfPossible() {
+        guard let peripheral, let settingsCharacteristic else {
+            readSettingsIfPossible()
+            return
+        }
+
+        if let pendingShowDebugLogs {
+            writeSettings(peripheral: peripheral, characteristic: settingsCharacteristic, showDebugLogs: pendingShowDebugLogs)
+        } else {
+            readSettingsIfPossible()
+        }
+    }
+
+    private func retrySettingsDiscoveryIfPossible(status: String) -> Bool {
+        guard !didRetrySettingsDiscovery, settingsCharacteristic == nil, let peripheral, let picoRCService else {
+            return false
+        }
+
+        didRetrySettingsDiscovery = true
+        self.status = status
+        peripheral.discoverCharacteristics(nil, for: picoRCService)
+        return true
     }
 
     private func disconnect(_ peripheral: CBPeripheral, status: String) {
@@ -332,8 +391,8 @@ extension BluetoothStreamModel: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        status = "Discovering PicoRC service"
-        peripheral.discoverServices([serviceUUID])
+        status = "Discovering services"
+        peripheral.discoverServices(nil)
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -362,8 +421,9 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
             return
         }
 
+        picoRCService = service
         status = "Discovering PicoRC characteristics"
-        peripheral.discoverCharacteristics([streamCharacteristicUUID, settingsCharacteristicUUID], for: service)
+        peripheral.discoverCharacteristics(nil, for: service)
     }
 
     func peripheral(
@@ -371,6 +431,9 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
+        guard service.uuid == serviceUUID else {
+            return
+        }
         guard error == nil, let characteristics = service.characteristics else {
             disconnect(peripheral, status: "Stream discovery failed")
             return
@@ -381,10 +444,18 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
             return
         }
 
-        streamCharacteristic = characteristic
         settingsCharacteristic = characteristics.first(where: { $0.uuid == settingsCharacteristicUUID })
-        isDebugLogToggleEnabled = settingsCharacteristic != nil
 
+        guard streamCharacteristic == nil else {
+            if settingsCharacteristic != nil {
+                syncSettingsIfPossible()
+            } else {
+                status = "Connected"
+            }
+            return
+        }
+
+        streamCharacteristic = characteristic
         status = "Subscribing to stream"
         peripheral.setNotifyValue(true, for: characteristic)
     }
@@ -404,8 +475,10 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
         }
 
         if characteristic.isNotifying {
-            readSettingsIfPossible()
+            isDebugLogToggleEnabled = true
+            syncSettingsIfPossible()
         } else {
+            isDebugLogToggleEnabled = false
             status = "Stream subscription stopped"
         }
     }
@@ -436,10 +509,12 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
 
         if let error {
             status = "Settings write failed: \(error.localizedDescription)"
+            pendingShowDebugLogs = nil
             peripheral.readValue(for: characteristic)
             return
         }
 
+        pendingShowDebugLogs = nil
         status = "Connected"
     }
 }

@@ -25,7 +25,7 @@ static void print_tasks(task_t *const tasks[], const size_t task_count) {
 		if (unlikely(task == nullptr)) continue;
 
 		utils_printf(
-			"tsk %s: stack - %lu/%lu words | overruns - %ld\n",
+			"%s: stack - %lu/%lu words | overruns - %ld\n",
 			task->name,
 			(unsigned long)task->stack_used,
 			(unsigned long)task->stack_depth,
