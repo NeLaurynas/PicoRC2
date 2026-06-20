@@ -33,7 +33,7 @@ struct LogView: View {
             .foregroundStyle(.white.opacity(showDebugLogsEnabled ? 0.88 : 0.42))
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(Color(red: 0.08, green: 0.09, blue: 0.10))
+            .background(Color.contentBackground)
 
             Divider()
                 .overlay(.white.opacity(0.12))

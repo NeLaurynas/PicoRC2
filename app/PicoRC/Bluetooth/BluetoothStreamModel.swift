@@ -7,7 +7,6 @@
 
 import Combine
 import CoreBluetooth
-import Dispatch
 import Foundation
 
 final class BluetoothStreamModel: NSObject, ObservableObject {

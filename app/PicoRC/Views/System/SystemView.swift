@@ -21,7 +21,7 @@ struct SystemView: View {
                     color: .green
                 )
 
-                SystemValuePanel(
+                SystemMetricPanel(
                     title: "Boot Count",
                     value: "\(state.bootCount)",
                     detail: "stored in LittleFS",
@@ -46,7 +46,7 @@ struct SystemView: View {
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
         }
-        .background(Color(red: 0.08, green: 0.09, blue: 0.10))
+        .background(Color.contentBackground)
     }
 
     private var cpuText: String {
@@ -54,42 +54,11 @@ struct SystemView: View {
     }
 }
 
-private struct SystemValuePanel: View {
-    let title: String
-    let value: String
-    let detail: String
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.62))
-
-                Spacer(minLength: 8)
-
-                Text(value)
-                    .font(.system(size: 22, weight: .bold, design: .monospaced))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.65)
-                    .foregroundStyle(color)
-            }
-
-            Text(detail)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.48))
-        }
-        .padding(12)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
-    }
-}
-
 private struct SystemMetricPanel: View {
     let title: String
     let value: String
     let detail: String
-    let progress: Double
+    var progress: Double? = nil
     let color: Color
 
     var body: some View {
@@ -112,11 +81,13 @@ private struct SystemMetricPanel: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white.opacity(0.48))
 
-            SystemProgressBar(progress: progress, color: color)
-                .frame(height: 8)
+            if let progress {
+                SystemProgressBar(progress: progress, color: color)
+                    .frame(height: 8)
+            }
         }
         .padding(12)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        .panelBackground()
     }
 }
 

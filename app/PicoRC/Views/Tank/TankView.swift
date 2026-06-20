@@ -33,7 +33,7 @@ struct TankView: View {
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
         }
-        .background(Color(red: 0.08, green: 0.09, blue: 0.10))
+        .background(Color.contentBackground)
     }
 }
 
@@ -72,7 +72,7 @@ private struct IndicatorView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        .panelBackground()
     }
 }
 
@@ -212,7 +212,7 @@ private struct TelemetryPanel: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 74)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        .panelBackground()
     }
 }
 
