@@ -7,8 +7,8 @@
 #include <hardware/gpio.h>
 #include <hardware/pwm.h>
 #include <pico/time.h>
+#include <utils.h>
 
-#include "utils.h"
 #include "defines/config.h"
 #include "state.h"
 
@@ -22,8 +22,8 @@ static constexpr u16 pwm_full = pwm_top + 1;
 
 static void buffer_set_pwm(const uint channel, const u16 pwm) {
 	buffer[0] = (channel == 1)
-		? (buffer[0] & 0x0000FFFF) | ((u32)pwm << 16)
-		: (buffer[0] & 0xFFFF0000) | (pwm & 0xFFFF);
+		? (buffer[0] & 0b00000000'00000000'11111111'11111111u) | ((u32)pwm << 16)
+		: (buffer[0] & 0b11111111'11111111'00000000'00000000u) | (pwm & 0b11111111'11111111u);
 }
 
 static void pwm_slice_init(const uint slice, const float clk_div) {
@@ -118,8 +118,8 @@ void main_engine_basic(const i32 gas, const i32 steer, i32 *left, i32 *right) {
 	auto gas_left = gas;
 	auto gas_right = gas;
 
-	i32 *gas_active = go_left ? &gas_left : &gas_right;
-	i32 *gas_passive = go_left ? &gas_right : &gas_left;
+	i32 *const gas_active = go_left ? &gas_left : &gas_right;
+	i32 *const gas_passive = go_left ? &gas_right : &gas_left;
 	const u8 steer_split = 50;
 
 	if (gas == 0) {

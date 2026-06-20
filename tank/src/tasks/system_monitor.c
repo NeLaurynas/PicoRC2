@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include <FreeRTOS.h>
+#include <frtos.h>
+#include <shared_modules/memory/memory.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <task.h>
 
-#include "frtos.h"
-#include "shared_modules/memory/memory.h"
 #include "state.h"
 #include "storage/app_storage.h"
 #include "tasks/tasks.h"
@@ -80,7 +80,7 @@ void task_system_monitor(void *task_parameter) {
 			.system_total_kib = system_total_kib,
 			.boot_count = state.app_data.boot_count,
 		};
-		state_system_telemetry_set(&telemetry);
+		state_system_telemetry_sync_store(&telemetry);
 
 		tasks_delay(&state.tasks.system_monitor);
 	}

@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include <pico/sync.h>
+#include <string.h>
+
 #include "shared_config.h"
 #include "tasks/tasks.h"
 
@@ -93,7 +96,16 @@ extern state_t state;
 extern desired_state_t desired_state;
 
 void state_init();
-void state_telemetry_set(const telemetry_t *telemetry);
-void state_telemetry_get(telemetry_t *telemetry);
-void state_system_telemetry_set(const system_telemetry_t *telemetry);
-void state_system_telemetry_get(system_telemetry_t *telemetry);
+
+// Copy `size` bytes between `dst` and `src` while holding `cs`, so the shared
+// side is stored/loaded atomically with respect to other tasks.
+static inline void sync_copy(critical_section_t *const cs, void *const dst, const void *const src, const size_t size) {
+	critical_section_enter_blocking(cs);
+	memcpy(dst, src, size);
+	critical_section_exit(cs);
+}
+
+void state_telemetry_sync_store(const telemetry_t *telemetry);
+void state_telemetry_sync_load(telemetry_t *telemetry);
+void state_system_telemetry_sync_store(const system_telemetry_t *telemetry);
+void state_system_telemetry_sync_load(system_telemetry_t *telemetry);

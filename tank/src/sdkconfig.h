@@ -1,3 +1,8 @@
+// Copyright (C) 2026 Laurynas 'Deviltry' Ekekeke
+// SPDX-License-Identifier: BSD-3-Clause
+
+#pragma once
+
 //
 // Emulate "menuconfig"
 //

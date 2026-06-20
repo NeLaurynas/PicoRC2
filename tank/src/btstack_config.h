@@ -1,5 +1,4 @@
-#ifndef _PICO_BTSTACK_BTSTACK_CONFIG_H
-#define _PICO_BTSTACK_BTSTACK_CONFIG_H
+#pragma once
 
 // Copy & paste from, with some custom changes:
 // https://github.com/raspberrypi/pico-examples/blob/master/pico_w/bt/config/btstack_config.h
@@ -92,5 +91,3 @@
 
 // To get the audio demos working even with HCI dump at 115200, this truncates long ACL packets
 // #define HCI_DUMP_STDOUT_MAX_SIZE_ACL 100
-
-#endif  // _PICO_BTSTACK_BTSTACK_CONFIG_H

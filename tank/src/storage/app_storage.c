@@ -4,9 +4,9 @@
 #include "storage/app_storage.h"
 
 #include <string.h>
+#include <utils.h>
 
 #include "storage/app_lfs.h"
-#include "utils.h"
 
 #define APP_FS_SETTINGS_PATH "/settings.bin"
 #define APP_FS_DATA_PATH "/app_data.bin"

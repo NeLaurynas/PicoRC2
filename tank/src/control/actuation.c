@@ -3,11 +3,12 @@
 
 #include "control/actuation.h"
 
+#include <utils.h>
+
 #include "defines/config.h"
 #include "modules/engine/main_engine.h"
 #include "modules/engine/turret_ctrl.h"
 #include "modules/leds/leds.h"
-#include "utils.h"
 
 static i8 normalized_command(const i32 val, const i32 deadzone, const i32 max_val) {
 	const auto magnitude = utils_scaled_pwm_percentage(val, deadzone, max_val);
@@ -22,7 +23,7 @@ void control_actuation_init() {
 
 void control_actuation_apply() {
 	telemetry_t telemetry;
-	state_telemetry_get(&telemetry);
+	state_telemetry_sync_load(&telemetry);
 
 	if (state.control.btn_start != desired_state.control.btn_start || state.control.btn_select != desired_state.control.btn_select) {
 		state.control.btn_start = desired_state.control.btn_start;
@@ -70,7 +71,7 @@ void control_actuation_apply() {
 			.white_leds = state.control.white_leds,
 			.red_led = state.control.red_led,
 		};
-		state_telemetry_set(&telemetry);
+		state_telemetry_sync_store(&telemetry);
 		return;
 	}
 
@@ -119,5 +120,5 @@ void control_actuation_apply() {
 		telemetry.turret_lift = normalized_command(lift, XY_DEAD_ZONE + 200, XY_MAX);
 	}
 
-	state_telemetry_set(&telemetry);
+	state_telemetry_sync_store(&telemetry);
 }

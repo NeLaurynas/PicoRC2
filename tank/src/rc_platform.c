@@ -1,10 +1,9 @@
 // Copyright (C) 2025 Laurynas 'Deviltry' Ekekeke
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <pico/cyw43_arch.h>
 #include <stddef.h>
 #include <string.h>
-
-#include <pico/cyw43_arch.h>
 #include <uni.h>
 
 #include "control/input.h"

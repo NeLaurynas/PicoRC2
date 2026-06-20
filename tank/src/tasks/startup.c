@@ -7,13 +7,13 @@
 #include <pico/status_led.h>
 #include <task.h>
 #include <uni.h>
+#include <utils.h>
 
 #include "control/actuation.h"
 #include "control/input.h"
 #include "state.h"
 #include "storage/app_storage.h"
 #include "tasks/tasks.h"
-#include "utils.h"
 
 struct uni_platform *get_rc_platform();
 

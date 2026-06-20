@@ -37,10 +37,7 @@ void control_input_on_connected() {
 
 void control_input_on_disconnected() {
 	const auto input = neutral_input(false);
-
-	critical_section_enter_blocking(&input_critical_section);
-	desired_state.control = input;
-	critical_section_exit(&input_critical_section);
+	sync_copy(&input_critical_section, &desired_state.control, &input, sizeof desired_state.control);
 }
 
 void control_input_on_gamepad(const uni_gamepad_t *gamepad) {
@@ -66,7 +63,5 @@ void control_input_on_gamepad(const uni_gamepad_t *gamepad) {
 		.connected = true,
 	};
 
-	critical_section_enter_blocking(&input_critical_section);
-	desired_state.control = input;
-	critical_section_exit(&input_critical_section);
+	sync_copy(&input_critical_section, &desired_state.control, &input, sizeof desired_state.control);
 }

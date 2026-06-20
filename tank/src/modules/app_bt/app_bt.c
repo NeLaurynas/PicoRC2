@@ -3,10 +3,9 @@
 
 #include "modules/app_bt/app_bt.h"
 
+#include <btstack.h>
 #include <stdatomic.h>
 #include <string.h>
-
-#include <btstack.h>
 
 #include "modules/app_bt/picorc_bt_service.gatt.h"
 #include "state.h"
@@ -17,6 +16,9 @@
 #define NOTIFICATION_MTU (LOG_PAYLOAD_MAX + 1)
 #define NOTIFICATION_QUEUE_SIZE 128
 #define APP_BT_AD_FLAGS 0b00000110
+#define APP_BT_ADV_INTERVAL_MIN 0b00000000'00110000
+#define APP_BT_ADV_INTERVAL_MAX 0b00000000'00110000
+#define APP_BT_ADV_CHANNEL_MAP 0b00000111
 #define TANK_STATE_VERSION 2
 #define TANK_STATE_LEN 5
 #define SYSTEM_STATE_VERSION 2
@@ -95,10 +97,10 @@ void app_bt_log_write_safe(const char *text, size_t len) {
 	if (text == nullptr || len == 0) return;
 	if (!atomic_load_explicit(&notification_client_subscribed, memory_order_acquire)) return;
 
-	u16 mtu = (u16)atomic_load_explicit(&negotiated_att_mtu, memory_order_acquire);
-	if (mtu < ATT_DEFAULT_MTU_BYTES) mtu = ATT_DEFAULT_MTU_BYTES;
-	size_t chunk_cap = (size_t)(mtu - 3 - 1); // ATT notification header (3) + our 1-byte packet type
-	if (chunk_cap > LOG_PAYLOAD_MAX) chunk_cap = LOG_PAYLOAD_MAX;
+	const u16 negotiated_mtu = (u16)atomic_load_explicit(&negotiated_att_mtu, memory_order_acquire);
+	const u16 mtu = negotiated_mtu < ATT_DEFAULT_MTU_BYTES ? ATT_DEFAULT_MTU_BYTES : negotiated_mtu;
+	const size_t mtu_payload_cap = (size_t)(mtu - 3 - 1); // ATT notification header (3) + our 1-byte packet type
+	const size_t chunk_cap = mtu_payload_cap > LOG_PAYLOAD_MAX ? LOG_PAYLOAD_MAX : mtu_payload_cap;
 
 	auto queued = false;
 	while (len > 0) {
@@ -139,7 +141,7 @@ void app_bt_start() {
 	notification_queue_clear();
 
 	bd_addr_t null_addr = {0};
-	gap_advertisements_set_params(0x0030, 0x0030, 0, 0, null_addr, 0x07, 0x00);
+	gap_advertisements_set_params(APP_BT_ADV_INTERVAL_MIN, APP_BT_ADV_INTERVAL_MAX, 0, 0, null_addr, APP_BT_ADV_CHANNEL_MAP, 0);
 	gap_advertisements_set_data((u8)sizeof picorc_adv_data, (u8 *)picorc_adv_data);
 	gap_advertisements_enable(true);
 }
@@ -455,7 +457,7 @@ static void tank_state_queue_tick_packet() {
 
 static void tank_state_build_current(u8 bytes[TANK_STATE_LEN]) {
 	telemetry_t telemetry;
-	state_telemetry_get(&telemetry);
+	state_telemetry_sync_load(&telemetry);
 
 	bytes[0] = (telemetry.connected ? 0b00000001 : 0) |
 		(telemetry.advanced_mode ? 0b00000010 : 0) |
@@ -498,7 +500,7 @@ static void system_state_queue_packet() {
 
 static void system_state_build_current(u8 bytes[SYSTEM_STATE_LEN]) {
 	system_telemetry_t telemetry;
-	state_system_telemetry_get(&telemetry);
+	state_system_telemetry_sync_load(&telemetry);
 
 	little_endian_store_16(bytes, 0, telemetry.cpu_x10);
 	little_endian_store_16(bytes, 2, telemetry.freertos_used_kib);
