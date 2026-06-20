@@ -15,7 +15,7 @@
 #include "tasks/tasks.h"
 #include "utils.h"
 
-struct uni_platform *get_rc_platform(void);
+struct uni_platform *get_rc_platform();
 
 [[noreturn]]
 void task_startup(void *task_parameter) {

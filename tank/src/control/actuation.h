@@ -6,4 +6,4 @@
 #include "state.h"
 
 void control_actuation_init();
-void control_actuation_apply(void);
+void control_actuation_apply();

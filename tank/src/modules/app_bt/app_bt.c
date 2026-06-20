@@ -28,40 +28,40 @@
 #define TANK_STATE_FULL_INTERVAL 10
 
 typedef struct {
-	uint8_t data[NOTIFICATION_MTU];
-	uint8_t len;
+	u8 data[NOTIFICATION_MTU];
+	u8 len;
 } notification_packet_t;
 
-static uint16_t app_bt_att_read_callback(hci_con_handle_t conn_handle, uint16_t att_handle, uint16_t offset,
-                                         uint8_t *buffer, uint16_t buffer_size);
-static int app_bt_att_write_callback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode,
-                                     uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
-static void app_bt_att_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
-static bool notification_queue_has_packets(void);
-static bool notification_queue_try_lock(void);
-static void notification_queue_unlock(void);
-static void notification_queue_clear(void);
-static void notification_queue_reset_locked(void);
-static bool notification_queue_push_packet(const uint8_t *data, uint8_t len);
+static u16 app_bt_att_read_callback(hci_con_handle_t conn_handle, u16 att_handle, u16 offset,
+                                    u8 *buffer, u16 buffer_size);
+static int app_bt_att_write_callback(hci_con_handle_t con_handle, u16 att_handle, u16 transaction_mode,
+                                     u16 offset, u8 *buffer, u16 buffer_size);
+static void app_bt_att_packet_handler(u8 packet_type, u16 channel, u8 *packet, u16 size);
+static bool notification_queue_has_packets();
+static bool notification_queue_try_lock();
+static void notification_queue_unlock();
+static void notification_queue_clear();
+static void notification_queue_reset_locked();
+static bool notification_queue_push_packet(const u8 *data, u8 len);
 static bool notification_queue_pop_packet(notification_packet_t *packet);
-static uint16_t read_notification_configuration(bool enabled, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
-static void request_notification_send_safe(void);
-static void request_notification_send_from_main(void);
+static u16 read_notification_configuration(bool enabled, u16 offset, u8 *buffer, u16 buffer_size);
+static void request_notification_send_safe();
+static void request_notification_send_from_main();
 static void schedule_notification_send_callback(void *context);
 static void notify_client_callback(void *context);
-static void tank_state_timer_start(void);
-static void tank_state_timer_stop(void);
+static void tank_state_timer_start();
+static void tank_state_timer_stop();
 static void tank_state_timer_callback(btstack_timer_source_t *timer);
-static void tank_state_queue_full_snapshot(void);
-static void tank_state_queue_tick_packet(void);
-static void tank_state_build_current(uint8_t bytes[TANK_STATE_LEN]);
-static bool tank_state_queue_packet(app_bt_packet_type_t type, const uint8_t bytes[TANK_STATE_LEN],
-                                    uint8_t changed_mask);
-static void system_state_queue_packet(void);
-static void system_state_build_current(uint8_t bytes[SYSTEM_STATE_LEN]);
-static void app_settings_build_current(uint8_t bytes[APP_SETTINGS_LEN]);
+static void tank_state_queue_full_snapshot();
+static void tank_state_queue_tick_packet();
+static void tank_state_build_current(u8 bytes[TANK_STATE_LEN]);
+static bool tank_state_queue_packet(app_bt_packet_type_t type, const u8 bytes[TANK_STATE_LEN],
+                                    u8 changed_mask);
+static void system_state_queue_packet();
+static void system_state_build_current(u8 bytes[SYSTEM_STATE_LEN]);
+static void app_settings_build_current(u8 bytes[APP_SETTINGS_LEN]);
 
-static const uint8_t picorc_adv_data[] = {
+static const u8 picorc_adv_data[] = {
 	2, BLUETOOTH_DATA_TYPE_FLAGS, APP_BT_AD_FLAGS,
 	7, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'P', 'i', 'c', 'o', 'R', 'C',
 	17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS,
@@ -86,16 +86,16 @@ static btstack_context_callback_registration_t notification_send_callback_regist
 static btstack_context_callback_registration_t notification_notify_callback_registration;
 static btstack_timer_source_t tank_state_timer;
 static bool tank_state_timer_active;
-static uint8_t tank_state_previous[TANK_STATE_LEN];
+static u8 tank_state_previous[TANK_STATE_LEN];
 static bool tank_state_previous_valid;
-static uint8_t tank_state_tick;
+static u8 tank_state_tick;
 static att_service_handler_t picorc_service_handler;
 
 void app_bt_log_write_safe(const char *text, size_t len) {
 	if (text == nullptr || len == 0) return;
 	if (!atomic_load_explicit(&notification_client_subscribed, memory_order_acquire)) return;
 
-	uint16_t mtu = (uint16_t)atomic_load_explicit(&negotiated_att_mtu, memory_order_acquire);
+	u16 mtu = (u16)atomic_load_explicit(&negotiated_att_mtu, memory_order_acquire);
 	if (mtu < ATT_DEFAULT_MTU_BYTES) mtu = ATT_DEFAULT_MTU_BYTES;
 	size_t chunk_cap = (size_t)(mtu - 3 - 1); // ATT notification header (3) + our 1-byte packet type
 	if (chunk_cap > LOG_PAYLOAD_MAX) chunk_cap = LOG_PAYLOAD_MAX;
@@ -103,9 +103,9 @@ void app_bt_log_write_safe(const char *text, size_t len) {
 	auto queued = false;
 	while (len > 0) {
 		const auto chunk_len = len > chunk_cap ? chunk_cap : len;
-		uint8_t packet[NOTIFICATION_MTU] = {APP_BT_PACKET_LOG};
+		u8 packet[NOTIFICATION_MTU] = {APP_BT_PACKET_LOG};
 		memcpy(packet + 1, text, chunk_len);
-		if (!notification_queue_push_packet(packet, (uint8_t)(chunk_len + 1))) break;
+		if (!notification_queue_push_packet(packet, (u8)(chunk_len + 1))) break;
 
 		queued = true;
 		text += chunk_len;
@@ -115,7 +115,7 @@ void app_bt_log_write_safe(const char *text, size_t len) {
 	if (queued) request_notification_send_safe();
 }
 
-void app_bt_start(void) {
+void app_bt_start() {
 	att_server_init(picorc_bt_profile_data, app_bt_att_read_callback, app_bt_att_write_callback);
 
 	picorc_service_handler = (att_service_handler_t){
@@ -140,18 +140,18 @@ void app_bt_start(void) {
 
 	bd_addr_t null_addr = {0};
 	gap_advertisements_set_params(0x0030, 0x0030, 0, 0, null_addr, 0x07, 0x00);
-	gap_advertisements_set_data((uint8_t)sizeof picorc_adv_data, (uint8_t *)picorc_adv_data);
+	gap_advertisements_set_data((u8)sizeof picorc_adv_data, (u8 *)picorc_adv_data);
 	gap_advertisements_enable(true);
 }
 
-static uint16_t app_bt_att_read_callback(hci_con_handle_t conn_handle, uint16_t att_handle, uint16_t offset,
-                                         uint8_t *buffer, uint16_t buffer_size) {
+static u16 app_bt_att_read_callback(hci_con_handle_t conn_handle, u16 att_handle, u16 offset,
+                                    u8 *buffer, u16 buffer_size) {
 	switch (att_handle) {
 		case ATT_CHARACTERISTIC_F7A4C002_2E2D_4E4B_9F2C_5049434F5243_01_VALUE_HANDLE:
 			return 0;
 
 		case ATT_CHARACTERISTIC_F7A4C003_2E2D_4E4B_9F2C_5049434F5243_01_VALUE_HANDLE: {
-			uint8_t bytes[APP_SETTINGS_LEN];
+			u8 bytes[APP_SETTINGS_LEN];
 			app_settings_build_current(bytes);
 			return att_read_callback_handle_blob(bytes, sizeof bytes, offset, buffer, buffer_size);
 		}
@@ -169,8 +169,8 @@ static uint16_t app_bt_att_read_callback(hci_con_handle_t conn_handle, uint16_t 
 	}
 }
 
-static int app_bt_att_write_callback(hci_con_handle_t con_handle, uint16_t att_handle, uint16_t transaction_mode,
-                                     uint16_t offset, uint8_t *buffer, uint16_t buffer_size) {
+static int app_bt_att_write_callback(hci_con_handle_t con_handle, u16 att_handle, u16 transaction_mode,
+                                     u16 offset, u8 *buffer, u16 buffer_size) {
 	if (transaction_mode != ATT_TRANSACTION_MODE_NONE) return ATT_ERROR_REQUEST_NOT_SUPPORTED;
 
 	switch (att_handle) {
@@ -211,7 +211,7 @@ static int app_bt_att_write_callback(hci_con_handle_t con_handle, uint16_t att_h
 	}
 }
 
-static void app_bt_att_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size) {
+static void app_bt_att_packet_handler(u8 packet_type, u16 channel, u8 *packet, u16 size) {
 	(void)channel;
 	(void)size;
 
@@ -250,19 +250,19 @@ static void app_bt_att_packet_handler(uint8_t packet_type, uint16_t channel, uin
 	}
 }
 
-static bool notification_queue_has_packets(void) {
+static bool notification_queue_has_packets() {
 	return atomic_load_explicit(&notification_packet_count, memory_order_acquire) > 0;
 }
 
-static bool notification_queue_try_lock(void) {
+static bool notification_queue_try_lock() {
 	return !atomic_flag_test_and_set_explicit(&notification_queue_lock, memory_order_acquire);
 }
 
-static void notification_queue_unlock(void) {
+static void notification_queue_unlock() {
 	atomic_flag_clear_explicit(&notification_queue_lock, memory_order_release);
 }
 
-static void notification_queue_clear(void) {
+static void notification_queue_clear() {
 	atomic_store_explicit(&notification_queue_clear_requested, true, memory_order_release);
 	if (!notification_queue_try_lock()) return;
 
@@ -270,14 +270,14 @@ static void notification_queue_clear(void) {
 	notification_queue_unlock();
 }
 
-static void notification_queue_reset_locked(void) {
+static void notification_queue_reset_locked() {
 	notification_packet_head = 0;
 	notification_packet_tail = 0;
 	atomic_store_explicit(&notification_packet_count, 0, memory_order_release);
 	atomic_store_explicit(&notification_queue_clear_requested, false, memory_order_release);
 }
 
-static bool notification_queue_push_packet(const uint8_t *data, const uint8_t len) {
+static bool notification_queue_push_packet(const u8 *data, const u8 len) {
 	if (data == nullptr || len == 0 || len > NOTIFICATION_MTU) return false;
 	if (!notification_queue_try_lock()) return false;
 
@@ -318,15 +318,15 @@ static bool notification_queue_pop_packet(notification_packet_t *packet) {
 	return true;
 }
 
-static uint16_t read_notification_configuration(const bool enabled, const uint16_t offset, uint8_t *buffer,
-                                                const uint16_t buffer_size) {
-	uint8_t value[2] = {0, 0};
+static u16 read_notification_configuration(const bool enabled, const u16 offset, u8 *buffer,
+                                           const u16 buffer_size) {
+	u8 value[2] = {0, 0};
 	if (enabled) little_endian_store_16(value, 0, GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION);
 
 	return att_read_callback_handle_blob(value, sizeof value, offset, buffer, buffer_size);
 }
 
-static void request_notification_send_safe(void) {
+static void request_notification_send_safe() {
 	if (atomic_exchange_explicit(&notification_send_request_pending, true, memory_order_acq_rel)) return;
 
 	notification_send_callback_registration.callback = schedule_notification_send_callback;
@@ -334,7 +334,7 @@ static void request_notification_send_safe(void) {
 	btstack_run_loop_execute_on_main_thread(&notification_send_callback_registration);
 }
 
-static void request_notification_send_from_main(void) {
+static void request_notification_send_from_main() {
 	if (notification_connection_handle == HCI_CON_HANDLE_INVALID || !notification_enabled) {
 		atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
 		notification_queue_clear();
@@ -385,7 +385,7 @@ static void notify_client_callback(void *context) {
 	if (notification_queue_has_packets()) request_notification_send_from_main();
 }
 
-static void tank_state_timer_start(void) {
+static void tank_state_timer_start() {
 	if (tank_state_timer_active) return;
 	if (notification_connection_handle == HCI_CON_HANDLE_INVALID || !notification_enabled) return;
 
@@ -395,7 +395,7 @@ static void tank_state_timer_start(void) {
 	tank_state_timer_active = true;
 }
 
-static void tank_state_timer_stop(void) {
+static void tank_state_timer_stop() {
 	if (!tank_state_timer_active) return;
 
 	(void)btstack_run_loop_remove_timer(&tank_state_timer);
@@ -414,8 +414,8 @@ static void tank_state_timer_callback(btstack_timer_source_t *timer) {
 	tank_state_timer_start();
 }
 
-static void tank_state_queue_full_snapshot(void) {
-	uint8_t bytes[TANK_STATE_LEN];
+static void tank_state_queue_full_snapshot() {
+	u8 bytes[TANK_STATE_LEN];
 	tank_state_build_current(bytes);
 
 	if (!tank_state_queue_packet(APP_BT_PACKET_TANK_STATE_FULL, bytes, 0)) return;
@@ -425,13 +425,13 @@ static void tank_state_queue_full_snapshot(void) {
 	tank_state_tick = 0;
 }
 
-static void tank_state_queue_tick_packet(void) {
+static void tank_state_queue_tick_packet() {
 	if (!tank_state_previous_valid) {
 		tank_state_queue_full_snapshot();
 		return;
 	}
 
-	uint8_t bytes[TANK_STATE_LEN];
+	u8 bytes[TANK_STATE_LEN];
 	tank_state_build_current(bytes);
 
 	tank_state_tick++;
@@ -443,9 +443,9 @@ static void tank_state_queue_tick_packet(void) {
 		return;
 	}
 
-	uint8_t changed_mask = 0;
-	for (uint8_t i = 0; i < TANK_STATE_LEN; i++) {
-		if (tank_state_previous[i] != bytes[i]) changed_mask |= (uint8_t)(1u << i);
+	u8 changed_mask = 0;
+	for (u8 i = 0; i < TANK_STATE_LEN; i++) {
+		if (tank_state_previous[i] != bytes[i]) changed_mask |= (u8)(1u << i);
 	}
 
 	if (!tank_state_queue_packet(APP_BT_PACKET_TANK_STATE_DIFF, bytes, changed_mask)) return;
@@ -453,7 +453,7 @@ static void tank_state_queue_tick_packet(void) {
 	memcpy(tank_state_previous, bytes, sizeof tank_state_previous);
 }
 
-static void tank_state_build_current(uint8_t bytes[TANK_STATE_LEN]) {
+static void tank_state_build_current(u8 bytes[TANK_STATE_LEN]) {
 	telemetry_t telemetry;
 	state_telemetry_get(&telemetry);
 
@@ -461,16 +461,16 @@ static void tank_state_build_current(uint8_t bytes[TANK_STATE_LEN]) {
 		(telemetry.advanced_mode ? 0b00000010 : 0) |
 		(telemetry.white_leds ? 0b00000100 : 0) |
 		(telemetry.red_led ? 0b00001000 : 0);
-	bytes[1] = (uint8_t)telemetry.main_left;
-	bytes[2] = (uint8_t)telemetry.main_right;
-	bytes[3] = (uint8_t)telemetry.turret_rotate;
-	bytes[4] = (uint8_t)telemetry.turret_lift;
+	bytes[1] = (u8)telemetry.main_left;
+	bytes[2] = (u8)telemetry.main_right;
+	bytes[3] = (u8)telemetry.turret_rotate;
+	bytes[4] = (u8)telemetry.turret_lift;
 }
 
-static bool tank_state_queue_packet(const app_bt_packet_type_t type, const uint8_t bytes[TANK_STATE_LEN],
-                                    const uint8_t changed_mask) {
-	uint8_t packet[NOTIFICATION_MTU] = {(uint8_t)type, TANK_STATE_VERSION};
-	uint8_t len = 2;
+static bool tank_state_queue_packet(const app_bt_packet_type_t type, const u8 bytes[TANK_STATE_LEN],
+                                    const u8 changed_mask) {
+	u8 packet[NOTIFICATION_MTU] = {(u8)type, TANK_STATE_VERSION};
+	u8 len = 2;
 
 	if (type == APP_BT_PACKET_TANK_STATE_FULL) {
 		memcpy(packet + len, bytes, TANK_STATE_LEN);
@@ -479,24 +479,24 @@ static bool tank_state_queue_packet(const app_bt_packet_type_t type, const uint8
 	}
 
 	packet[len++] = changed_mask;
-	for (uint8_t i = 0; i < TANK_STATE_LEN; i++) {
-		if ((changed_mask & (uint8_t)(1u << i)) == 0) continue;
+	for (u8 i = 0; i < TANK_STATE_LEN; i++) {
+		if ((changed_mask & (u8)(1u << i)) == 0) continue;
 		packet[len++] = bytes[i];
 	}
 
 	return notification_queue_push_packet(packet, len);
 }
 
-static void system_state_queue_packet(void) {
-	uint8_t bytes[SYSTEM_STATE_LEN];
+static void system_state_queue_packet() {
+	u8 bytes[SYSTEM_STATE_LEN];
 	system_state_build_current(bytes);
 
-	uint8_t packet[NOTIFICATION_MTU] = {APP_BT_PACKET_SYSTEM_STATE, SYSTEM_STATE_VERSION};
+	u8 packet[NOTIFICATION_MTU] = {APP_BT_PACKET_SYSTEM_STATE, SYSTEM_STATE_VERSION};
 	memcpy(packet + 2, bytes, SYSTEM_STATE_LEN);
 	(void)notification_queue_push_packet(packet, SYSTEM_STATE_LEN + 2);
 }
 
-static void system_state_build_current(uint8_t bytes[SYSTEM_STATE_LEN]) {
+static void system_state_build_current(u8 bytes[SYSTEM_STATE_LEN]) {
 	system_telemetry_t telemetry;
 	state_system_telemetry_get(&telemetry);
 
@@ -508,7 +508,7 @@ static void system_state_build_current(uint8_t bytes[SYSTEM_STATE_LEN]) {
 	little_endian_store_16(bytes, 10, telemetry.boot_count);
 }
 
-static void app_settings_build_current(uint8_t bytes[APP_SETTINGS_LEN]) {
+static void app_settings_build_current(u8 bytes[APP_SETTINGS_LEN]) {
 	bytes[0] = APP_SETTINGS_VERSION;
 	bytes[1] = state.app_settings.debug_logs ? APP_SETTINGS_DEBUG_LOGS_FLAG : 0;
 }

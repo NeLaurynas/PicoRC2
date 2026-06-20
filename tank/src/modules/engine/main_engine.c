@@ -20,10 +20,6 @@ static u32 buffer[1] = { 0 };
 static constexpr u16 pwm_top = 100;
 static constexpr u16 pwm_full = pwm_top + 1;
 
-static bool debug_logs_enabled(void) {
-	return state.app_settings.debug_logs;
-}
-
 static void buffer_set_pwm(const uint channel, const u16 pwm) {
 	buffer[0] = (channel == 1)
 		? (buffer[0] & 0x0000FFFF) | ((u32)pwm << 16)
@@ -64,7 +60,7 @@ void main_engine_init() {
 	channel2 = pwm_gpio_to_channel(MOD_ENGINE_MAIN_PWM2);
 
 	const auto clk_div = utils_calculate_pio_clk_div(0.5f); // 3.f for 5 khz frequency (2.f for 7.5 khz 1.f for 15 khz)
-	if (debug_logs_enabled()) utils_printf("MAIN ENGINE CLK DIV: %f\n", clk_div);
+	if (state.app_settings.debug_logs) utils_printf("MAIN ENGINE CLK DIV: %f\n", clk_div);
 
 	pwm_slice_init(slice1, clk_div);
 	pwm_slice_init(slice2, clk_div);
@@ -108,7 +104,7 @@ void main_engine_advanced(const i32 left, const i32 right) {
 	if (right < 0) pwm_right += 1;
 	adjust_pwm(&pwm_left);
 	adjust_pwm(&pwm_right);
-	if (debug_logs_enabled()) utils_printf("%d<<>>%d\n", pwm_left, pwm_right);
+	if (state.app_settings.debug_logs) utils_printf("%d<<>>%d\n", pwm_left, pwm_right);
 
 	set_motor_ctrl(left, pwm_left, true);
 	set_motor_ctrl(right, pwm_right, false);
@@ -151,7 +147,7 @@ void main_engine_basic(const i32 gas, const i32 steer, i32 *left, i32 *right) {
 	u16 pwm_right = utils_scaled_pwm_percentage(gas_right, TRIG_DEAD_ZONE, TRIG_MAX);
 	adjust_pwm(&pwm_left);
 	adjust_pwm(&pwm_right);
-	if (debug_logs_enabled()) {
+	if (state.app_settings.debug_logs) {
 		utils_printf("%c%d<<%ld>>%c%d\n", gas_left < 0 ? '-' : '+', pwm_left, gas, gas_right < 0 ? '-' : '+', pwm_right);
 	}
 
