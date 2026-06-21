@@ -140,10 +140,8 @@ add_executable(${PROJECT_NAME}
 		modules/app_bt/app_bt.c
 		modules/app_bt/app_bt.h
 		modules/app_bt/picorc_bt_service.gatt.h
-		modules/engine/turret_ctrl.c
-		modules/engine/turret_ctrl.h
-		modules/engine/main_engine.c
-		modules/engine/main_engine.h
+		modules/engine/engine.c
+		modules/engine/engine.h
 		modules/leds/leds.c
 		modules/leds/leds.h
 )

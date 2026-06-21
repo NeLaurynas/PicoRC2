@@ -6,8 +6,7 @@
 #include <utils.h>
 
 #include "defines/config.h"
-#include "modules/engine/main_engine.h"
-#include "modules/engine/turret_ctrl.h"
+#include "modules/engine/engine.h"
 #include "modules/leds/leds.h"
 
 static i8 normalized_command(const i32 val, const i32 deadzone, const i32 max_val) {
