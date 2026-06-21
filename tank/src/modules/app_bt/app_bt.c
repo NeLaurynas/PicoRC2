@@ -88,6 +88,23 @@ static bool tank_state_previous_valid;
 static u8 tank_state_tick;
 static att_service_handler_t picorc_service_handler;
 
+static void notification_disable(const bool clear_connection, const bool reset_state, const bool reset_mtu) {
+	if (clear_connection) notification_connection_handle = HCI_CON_HANDLE_INVALID;
+	notification_enabled = false;
+	if (reset_state) {
+		tank_state_timer_active = false;
+		tank_state_previous_valid = false;
+		tank_state_tick = 0;
+		atomic_store_explicit(&notification_send_request_pending, false, memory_order_release);
+	} else {
+		tank_state_timer_stop();
+	}
+	if (reset_state || reset_mtu) atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
+	atomic_store_explicit(&notification_client_subscribed, false, memory_order_release);
+	atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
+	notification_queue_clear();
+}
+
 void app_bt_log_write_safe(const char *text, size_t len) {
 	if (text == nullptr || len == 0) return;
 	if (!atomic_load_explicit(&notification_client_subscribed, memory_order_acquire)) return;
@@ -128,20 +145,11 @@ void app_bt_start() {
 	};
 	att_server_register_service_handler(&picorc_service_handler);
 
-	notification_connection_handle = HCI_CON_HANDLE_INVALID;
-	notification_enabled = false;
-	tank_state_timer_active = false;
-	tank_state_previous_valid = false;
-	tank_state_tick = 0;
 	if (notification_queue == nullptr) {
 		notification_queue = xQueueCreate(NOTIFICATION_QUEUE_SIZE, sizeof(notification_packet_t));
 	}
 	configASSERT(notification_queue != nullptr);
-	atomic_store_explicit(&notification_client_subscribed, false, memory_order_release);
-	atomic_store_explicit(&notification_send_request_pending, false, memory_order_release);
-	atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
-	atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
-	notification_queue_clear();
+	notification_disable(true, true, true);
 
 	bd_addr_t null_addr = {0};
 	gap_advertisements_set_params(APP_BT_ADV_INTERVAL_MIN, APP_BT_ADV_INTERVAL_MAX, 0, 0, null_addr, APP_BT_ADV_CHANNEL_MAP, 0);
@@ -193,9 +201,7 @@ static int app_bt_att_write_callback(hci_con_handle_t con_handle, u16 att_handle
 				tank_state_timer_start();
 				request_notification_send_from_main();
 			} else {
-				tank_state_timer_stop();
-				atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
-				notification_queue_clear();
+				notification_disable(false, false, false);
 			}
 			return ATT_ERROR_SUCCESS;
 		}
@@ -246,13 +252,7 @@ static void app_bt_att_packet_handler(u8 packet_type, u16 channel, u8 *packet, u
 		case ATT_EVENT_DISCONNECTED:
 			if (notification_connection_handle != att_event_disconnected_get_handle(packet)) break;
 
-			notification_connection_handle = HCI_CON_HANDLE_INVALID;
-			notification_enabled = false;
-			atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
-			tank_state_timer_stop();
-			atomic_store_explicit(&notification_client_subscribed, false, memory_order_release);
-			atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
-			notification_queue_clear();
+			notification_disable(true, false, true);
 			break;
 
 		default:
@@ -305,8 +305,7 @@ static void request_notification_send_safe() {
 
 static void request_notification_send_from_main() {
 	if (notification_connection_handle == HCI_CON_HANDLE_INVALID || !notification_enabled) {
-		atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
-		notification_queue_clear();
+		notification_disable(notification_connection_handle == HCI_CON_HANDLE_INVALID, false, false);
 		return;
 	}
 	if (!notification_queue_has_packets()) return;
