@@ -92,15 +92,11 @@ void control_actuation_apply() {
 		}
 	}
 
-	if (state.control.dpad_left != desired_state.control.dpad_left || state.control.dpad_right != desired_state.control.dpad_right) {
-		state.control.dpad_left = desired_state.control.dpad_left;
-		state.control.dpad_right = desired_state.control.dpad_right;
+	if (sync_button_pair(&state.control.dpad_left, &state.control.dpad_right, desired_state.control.dpad_left, desired_state.control.dpad_right)) {
 		const i32 rotate = (desired_state.control.dpad_left ? -XY_MAX : 0) + (desired_state.control.dpad_right ? XY_MAX : 0);
 		telemetry.turret_rotate = turret_ctrl_rotate(rotate);
 	}
-	if (state.control.dpad_up != desired_state.control.dpad_up || state.control.dpad_down != desired_state.control.dpad_down) {
-		state.control.dpad_up = desired_state.control.dpad_up;
-		state.control.dpad_down = desired_state.control.dpad_down;
+	if (sync_button_pair(&state.control.dpad_up, &state.control.dpad_down, desired_state.control.dpad_up, desired_state.control.dpad_down)) {
 		const i32 lift = (desired_state.control.dpad_up ? XY_MAX : 0) + (desired_state.control.dpad_down ? -XY_MAX : 0);
 		telemetry.turret_lift = turret_ctrl_lift(lift);
 	}
