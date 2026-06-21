@@ -24,7 +24,7 @@ struct TankControlPanel: View {
             HStack(alignment: .center, spacing: 10) {
                 DriveMeter(title: "L", value: left, color: .driveLeft)
 
-                TankStage(rotate: rotate, lift: lift)
+                TankStage(left: left, right: right, rotate: rotate, lift: lift)
                     .frame(maxWidth: .infinity)
                     .frame(height: 196)
 
@@ -55,6 +55,8 @@ struct TankControlPanel: View {
 // MARK: - Central stage: top-down tank + turret direction arrows
 
 private struct TankStage: View {
+    let left: Int
+    let right: Int
     let rotate: Int
     let lift: Int
 
@@ -70,7 +72,7 @@ private struct TankStage: View {
             ZStack {
                 StageBackdrop()
 
-                TopDownTank(rotate: rotate)
+                TopDownTank(left: left, right: right, rotate: rotate)
                     .frame(width: width, height: height)
 
                 TurretArrow(direction: .up, active: lift > 0, intensity: magnitude(lift), color: .hudBlue)
@@ -138,6 +140,8 @@ private struct TurretArrow: View {
 // MARK: - Top-down tank
 
 private struct TopDownTank: View {
+    let left: Int
+    let right: Int
     let rotate: Int
 
     var body: some View {
@@ -153,9 +157,9 @@ private struct TopDownTank: View {
 
             ZStack {
                 HStack(spacing: hullWidth * 0.60) {
-                    TrackTread()
+                    TrackTread(value: left)
                         .frame(width: trackWidth, height: trackHeight)
-                    TrackTread()
+                    TrackTread(value: right)
                         .frame(width: trackWidth, height: trackHeight)
                 }
 
@@ -171,9 +175,37 @@ private struct TopDownTank: View {
     }
 }
 
+private final class TreadScroll {
+    var phase: CGFloat = 0
+    var velocity: CGFloat = 0
+    private var lastTimestamp: TimeInterval?
+
+    func offset(at timestamp: TimeInterval, target: CGFloat, spacing: CGFloat) -> CGFloat {
+        defer { lastTimestamp = timestamp }
+        guard let last = lastTimestamp else {
+            return phase
+        }
+        let dt = timestamp - last
+        if dt > 0, dt < 0.25 {
+            velocity += (target - velocity) * min(1.0, CGFloat(dt) * 8.0)
+            phase = (phase + CGFloat(dt) * velocity).truncatingRemainder(dividingBy: spacing)
+            if phase < 0 {
+                phase += spacing
+            }
+        }
+        return phase
+    }
+}
+
 private struct TrackTread: View {
+    let value: Int
+
+    @State private var scroll = TreadScroll()
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 7, style: .continuous)
+        let speed = max(-1.0, min(1.0, Double(value) / 100.0))
+        let target = CGFloat(-speed * 90.0)
 
         return shape
             .fill(
@@ -184,16 +216,25 @@ private struct TrackTread: View {
                 )
             )
             .overlay(
-                Canvas { context, size in
-                    let lines = 7
-                    for index in 1..<lines {
-                        let y = size.height * CGFloat(index) / CGFloat(lines)
-                        var path = Path()
-                        path.move(to: CGPoint(x: 3, y: y))
-                        path.addLine(to: CGPoint(x: size.width - 3, y: y))
-                        context.stroke(path, with: .color(.white.opacity(0.07)), lineWidth: 1.5)
+                TimelineView(.animation(paused: value == 0)) { timeline in
+                    Canvas { context, size in
+                        let lines = 7
+                        let spacing = size.height / CGFloat(lines)
+                        let offset = scroll.offset(
+                            at: timeline.date.timeIntervalSinceReferenceDate,
+                            target: target,
+                            spacing: spacing
+                        )
+                        for index in -1...lines {
+                            let y = spacing * CGFloat(index) + offset
+                            var path = Path()
+                            path.move(to: CGPoint(x: 3, y: y))
+                            path.addLine(to: CGPoint(x: size.width - 3, y: y))
+                            context.stroke(path, with: .color(.white.opacity(0.07)), lineWidth: 1.5)
+                        }
                     }
                 }
+                .clipShape(shape)
             )
             .overlay(shape.strokeBorder(.white.opacity(0.10), lineWidth: 1))
             .shadow(color: .black.opacity(0.35), radius: 4, y: 2)

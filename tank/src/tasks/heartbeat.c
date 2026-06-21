@@ -3,6 +3,7 @@
 
 #include <FreeRTOS.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <task.h>
 #include <utils.h>
 
@@ -20,18 +21,39 @@ static void update_tasks(task_t *const tasks[], const size_t task_count) {
 }
 
 static void print_tasks(task_t *const tasks[], const size_t task_count) {
+	static char buffer[512];
+	size_t used = 0;
+
 	for (size_t i = 0; i < task_count; i++) {
 		const task_t *const task = tasks[i];
 		if (unlikely(task == nullptr)) continue;
 
-		utils_printf(
-			"%s: stack - %lu/%lu words | overruns - %ld\n",
+		const auto written = snprintf(
+			buffer + used,
+			sizeof buffer - used,
+			"%s: stack %lu/%lu words, overruns %ld\n",
 			task->name,
 			(unsigned long)task->stack_used,
 			(unsigned long)task->stack_depth,
 			(unsigned long)task->delay_overruns
 		);
+		if (written < 0) break;
+
+		const auto remaining = sizeof buffer - used;
+		if ((size_t)written >= remaining) {
+			used = sizeof buffer - 1;
+			break;
+		}
+		used += (size_t)written;
 	}
+
+	if (used + 2 < sizeof buffer) {
+		buffer[used++] = '-';
+		buffer[used++] = '\n';
+		buffer[used] = '\0';
+	}
+
+	if (used > 0) utils_printf("%s", buffer);
 }
 
 [[noreturn]]
@@ -50,7 +72,6 @@ void task_heartbeat(void *task_parameter) {
 	while (true) {
 		update_tasks(tasks, ARRAY_SIZE(tasks));
 		print_tasks(tasks, ARRAY_SIZE(tasks));
-		utils_printf("-\n");
 
 		tasks_delay(&state.tasks.heartbeat);
 	}

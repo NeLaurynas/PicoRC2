@@ -93,15 +93,21 @@ private struct CPUCard: View {
                 StatusPill(text: statusLabel, color: color)
             }
 
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text(valueText)
+                    .font(.system(size: 46, weight: .bold, design: .monospaced))
+                    .foregroundStyle(color)
+
+                Text("%")
+                    .font(.system(size: 22, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(color.opacity(0.7))
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .shadow(color: color.opacity(0.35), radius: 8)
+
             MetricBar(fraction: fraction, color: color)
-                .frame(height: 22)
-                .overlay(alignment: .trailing) {
-                    Text("\(valueText)%")
-                        .font(.system(size: 12, weight: .heavy, design: .monospaced))
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.45), radius: 2)
-                        .padding(.trailing, 9)
-                }
+                .frame(height: 10)
 
             Text("RP2350 · realtime utilisation")
                 .font(.system(size: 11, weight: .medium))
