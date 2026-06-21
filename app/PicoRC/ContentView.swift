@@ -10,26 +10,36 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var model = BluetoothStreamModel()
 
+    init() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(red: 0.03, green: 0.04, blue: 0.055, alpha: 0.92)
+        appearance.shadowColor = UIColor.white.withAlphaComponent(0.10)
+
+        let selected = UIColor(red: 0.20, green: 0.91, blue: 0.92, alpha: 1.0)
+        appearance.stackedLayoutAppearance.selected.iconColor = selected
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: selected]
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+
     var body: some View {
         ZStack {
-            Color.appBackground
-                .ignoresSafeArea()
+            TacticalBackground()
 
             VStack(spacing: 0) {
                 StatusBar(status: model.status)
 
-                Divider()
-                    .overlay(.white.opacity(0.16))
-
                 TabView {
                     TankView(state: model.tankState)
                         .tabItem {
-                            Label("Tank", systemImage: "gauge")
+                            Label("Tank", systemImage: "shield.lefthalf.filled")
                         }
 
                     SystemView(state: model.systemState)
                         .tabItem {
-                            Label("SYS", systemImage: "memorychip")
+                            Label("System", systemImage: "memorychip")
                         }
 
                     LogView(
@@ -39,9 +49,10 @@ struct ContentView: View {
                         setShowDebugLogs: model.setShowDebugLogs
                     )
                         .tabItem {
-                            Label("LOG", systemImage: "terminal")
+                            Label("Log", systemImage: "terminal")
                         }
                 }
+                .tint(.hudCyan)
             }
         }
         .preferredColorScheme(.dark)

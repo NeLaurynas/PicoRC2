@@ -10,125 +10,248 @@ import SwiftUI
 struct SystemView: View {
     let state: SystemTelemetryState
 
+    private var cpuFraction: Double {
+        min(Double(state.cpuX10) / 1000.0, 1.0)
+    }
+
+    private var cpuText: String {
+        "\(state.cpuX10 / 10).\(state.cpuX10 % 10)"
+    }
+
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
-                SystemMetricPanel(
-                    title: "CPU",
-                    value: cpuText,
-                    detail: "load",
-                    progress: min(Double(state.cpuX10) / 1000.0, 1.0),
-                    color: .green
-                )
+            VStack(spacing: 14) {
+                CPUCard(fraction: cpuFraction, valueText: cpuText)
 
-                SystemMetricPanel(
-                    title: "Boot Count",
-                    value: "\(state.bootCount)",
-                    detail: "stored in LittleFS",
-                    color: .mint
-                )
+                BootsCard(count: state.bootCount)
 
-                SystemMemoryPanel(
-                    title: "FreeRTOS Heap",
+                MemoryCard(
+                    title: "FREERTOS HEAP",
+                    systemImage: "cpu",
                     used: state.freeRTOSUsedKiB,
                     total: state.freeRTOSTotalKiB,
-                    color: .cyan
+                    color: .hudCyan
                 )
 
-                SystemMemoryPanel(
-                    title: "RP2350 Memory",
+                MemoryCard(
+                    title: "RP2350 MEMORY",
+                    systemImage: "memorychip",
                     used: state.systemUsedKiB,
                     total: state.systemTotalKiB,
-                    color: .orange
+                    color: .hudAmber
                 )
             }
             .padding(16)
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
         }
-        .background(Color.contentBackground)
-    }
-
-    private var cpuText: String {
-        "\(state.cpuX10 / 10).\(state.cpuX10 % 10)%"
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
     }
 }
 
-private struct SystemMetricPanel: View {
-    let title: String
-    let value: String
-    let detail: String
-    var progress: Double? = nil
-    let color: Color
+// MARK: - CPU load card
+
+private struct CPUCard: View {
+    let fraction: Double
+    let valueText: String
+
+    private var color: Color {
+        if fraction >= 0.85 {
+            return .hudRed
+        }
+        if fraction >= 0.6 {
+            return .hudAmber
+        }
+        return .hudGreen
+    }
+
+    private var statusLabel: String {
+        if fraction >= 0.85 {
+            return "CRITICAL"
+        }
+        if fraction >= 0.6 {
+            return "HIGH"
+        }
+        return "NOMINAL"
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.62))
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "gauge.with.dots.needle.67percent")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(color)
+
+                Text("CPU LOAD")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
 
                 Spacer(minLength: 8)
 
-                Text(value)
-                    .font(.system(size: 22, weight: .bold, design: .monospaced))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.65)
-                    .foregroundStyle(color)
+                StatusPill(text: statusLabel, color: color)
             }
 
-            Text(detail)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.48))
+            MetricBar(fraction: fraction, color: color)
+                .frame(height: 22)
+                .overlay(alignment: .trailing) {
+                    Text("\(valueText)%")
+                        .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.45), radius: 2)
+                        .padding(.trailing, 9)
+                }
 
-            if let progress {
-                SystemProgressBar(progress: progress, color: color)
-                    .frame(height: 8)
-            }
+            Text("RP2350 · realtime utilisation")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.45))
         }
-        .padding(12)
-        .panelBackground()
+        .padding(16)
+        .glassPanel(cornerRadius: 22, accent: color)
     }
 }
 
-private struct SystemMemoryPanel: View {
+private struct StatusPill: View {
+    let text: String
+    let color: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 9, weight: .heavy, design: .monospaced))
+            .tracking(1)
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(color.opacity(0.15)))
+            .overlay(Capsule().stroke(color.opacity(0.4), lineWidth: 1))
+    }
+}
+
+// MARK: - Boots card (slim)
+
+private struct BootsCard: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.hudGreen.opacity(0.15))
+                    .frame(width: 34, height: 34)
+
+                Image(systemName: "power")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.hudGreen)
+            }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("BOOTS")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Text("stored in LittleFS")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+
+            Spacer(minLength: 0)
+
+            Text("\(count)")
+                .font(.system(size: 28, weight: .bold, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .foregroundStyle(.hudGreen)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .glassPanel(cornerRadius: 18)
+    }
+}
+
+// MARK: - Memory card
+
+private struct MemoryCard: View {
     let title: String
+    let systemImage: String
     let used: Int
     let total: Int
     let color: Color
 
-    var body: some View {
-        SystemMetricPanel(
-            title: title,
-            value: total > 0 ? "\(used)/\(total) KiB" : "--",
-            detail: total > 0 ? "\(max(total - used, 0)) KiB free" : "waiting",
-            progress: progress,
-            color: color
-        )
-    }
-
-    private var progress: Double {
+    private var fraction: Double {
         guard total > 0 else {
             return 0
         }
-
         return min(max(Double(used) / Double(total), 0), 1)
+    }
+
+    private var percentText: String {
+        total > 0 ? "\(Int((fraction * 100).rounded()))%" : "--"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(color)
+
+                Text(title)
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Spacer(minLength: 8)
+
+                Text(total > 0 ? "\(used)/\(total) KiB" : "--")
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .foregroundStyle(color)
+            }
+
+            MetricBar(fraction: fraction, color: color)
+                .frame(height: 10)
+
+            HStack {
+                Text(total > 0 ? "\(max(total - used, 0)) KiB free" : "waiting")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.45))
+
+                Spacer(minLength: 0)
+
+                Text(percentText)
+                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(color.opacity(0.9))
+            }
+        }
+        .padding(16)
+        .glassPanel(cornerRadius: 22)
     }
 }
 
-private struct SystemProgressBar: View {
-    let progress: Double
+private struct MetricBar: View {
+    let fraction: Double
     let color: Color
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(.white.opacity(0.10))
+                Capsule()
+                    .fill(.white.opacity(0.08))
 
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(color.opacity(0.92))
-                    .frame(width: proxy.size.width * min(max(progress, 0), 1))
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.7), color],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: proxy.size.width * min(max(fraction, 0), 1))
+                    .shadow(color: color.opacity(0.6), radius: 5)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: fraction)
             }
         }
     }

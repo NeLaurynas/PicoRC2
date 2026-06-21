@@ -4,18 +4,24 @@
 #include "leds.h"
 
 #include <hardware/gpio.h>
+#include <stddef.h>
 #include <utils.h>
 
 #include "defines/config.h"
+#include "shared_config.h"
 
 void leds_init() {
-	gpio_init(MOD_LEDS_RED);
-	gpio_init(MOD_LEDS_WHITE);
-	gpio_set_dir(MOD_LEDS_RED, true);
-	gpio_set_dir(MOD_LEDS_WHITE, true);
+	static const u8 pins[] = {
+		MOD_LEDS_RED,
+		MOD_LEDS_WHITE,
+	};
 
-	gpio_set_drive_strength(MOD_LEDS_WHITE, GPIO_DRIVE_STRENGTH_2MA);
-	gpio_set_drive_strength(MOD_LEDS_RED, GPIO_DRIVE_STRENGTH_2MA);
+	for (size_t i = 0; i < ARRAY_SIZE(pins); i++) {
+		const u8 pin = pins[i];
+		gpio_init(pin);
+		gpio_set_dir(pin, true);
+		gpio_set_drive_strength(pin, GPIO_DRIVE_STRENGTH_2MA);
+	}
 }
 
 void leds_toggle_red(const bool on) {

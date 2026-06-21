@@ -15,10 +15,7 @@
 #define MOD_ENGINE_MAIN_PWM2 14
 #define MOD_ENGINE_MAIN_ENABLE1 13
 #define MOD_ENGINE_MAIN_ENABLE2 12
-#define MOD_ENGINE_MAIN_DMA_CH1 2 // 0 and 1 is used by cyw43 chip or btstack or bluepad32
-#define MOD_ENGINE_MAIN_DMA_CH2 3
 
-#define MOD_TURRET_CTRL_DMA_CH 4
 #define MOD_TURRET_CTRL_PWM1 16
 #define MOD_TURRET_CTRL_PWM2 17 // not really PWM - on/off
 #define MOD_TURRET_CTRL_ENABLE1 19
@@ -28,4 +25,3 @@
 
 #define MOD_LEDS_WHITE 28
 #define MOD_LEDS_RED 5
-

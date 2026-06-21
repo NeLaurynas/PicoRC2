@@ -4,8 +4,11 @@
 #include "modules/app_bt/app_bt.h"
 
 #include <btstack.h>
+#include <FreeRTOS.h>
+#include <queue.h>
 #include <stdatomic.h>
 #include <string.h>
+#include <utils.h>
 
 #include "modules/app_bt/picorc_bt_service.gatt.h"
 #include "state.h"
@@ -40,10 +43,7 @@ static int app_bt_att_write_callback(hci_con_handle_t con_handle, u16 att_handle
                                      u16 offset, u8 *buffer, u16 buffer_size);
 static void app_bt_att_packet_handler(u8 packet_type, u16 channel, u8 *packet, u16 size);
 static bool notification_queue_has_packets();
-static bool notification_queue_try_lock();
-static void notification_queue_unlock();
 static void notification_queue_clear();
-static void notification_queue_reset_locked();
 static bool notification_queue_push_packet(const u8 *data, u8 len);
 static bool notification_queue_pop_packet(notification_packet_t *packet);
 static u16 read_notification_configuration(bool enabled, u16 offset, u8 *buffer, u16 buffer_size);
@@ -72,16 +72,11 @@ static const u8 picorc_adv_data[] = {
 };
 static_assert(sizeof picorc_adv_data <= 31, "picorc_adv_data too big");
 
-static notification_packet_t notification_packets[NOTIFICATION_QUEUE_SIZE];
-static atomic_flag notification_queue_lock = ATOMIC_FLAG_INIT;
-static atomic_uint notification_packet_count;
-static size_t notification_packet_head;
-static size_t notification_packet_tail;
 static atomic_bool notification_client_subscribed;
-static atomic_bool notification_queue_clear_requested;
 static atomic_bool notification_send_request_pending;
 static atomic_bool notification_notify_request_pending;
 static atomic_uint negotiated_att_mtu;
+static QueueHandle_t notification_queue;
 static hci_con_handle_t notification_connection_handle = HCI_CON_HANDLE_INVALID;
 static bool notification_enabled;
 static btstack_context_callback_registration_t notification_send_callback_registration;
@@ -117,6 +112,10 @@ void app_bt_log_write_safe(const char *text, size_t len) {
 	if (queued) request_notification_send_safe();
 }
 
+void utils_printf_sink(const char *text, const size_t len) {
+	app_bt_log_write_safe(text, len);
+}
+
 void app_bt_start() {
 	att_server_init(picorc_bt_profile_data, app_bt_att_read_callback, app_bt_att_write_callback);
 
@@ -134,6 +133,10 @@ void app_bt_start() {
 	tank_state_timer_active = false;
 	tank_state_previous_valid = false;
 	tank_state_tick = 0;
+	if (notification_queue == nullptr) {
+		notification_queue = xQueueCreate(NOTIFICATION_QUEUE_SIZE, sizeof(notification_packet_t));
+	}
+	configASSERT(notification_queue != nullptr);
 	atomic_store_explicit(&notification_client_subscribed, false, memory_order_release);
 	atomic_store_explicit(&notification_send_request_pending, false, memory_order_release);
 	atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
@@ -258,71 +261,30 @@ static void app_bt_att_packet_handler(u8 packet_type, u16 channel, u8 *packet, u
 }
 
 static bool notification_queue_has_packets() {
-	return atomic_load_explicit(&notification_packet_count, memory_order_acquire) > 0;
-}
-
-static bool notification_queue_try_lock() {
-	return !atomic_flag_test_and_set_explicit(&notification_queue_lock, memory_order_acquire);
-}
-
-static void notification_queue_unlock() {
-	atomic_flag_clear_explicit(&notification_queue_lock, memory_order_release);
+	return notification_queue != nullptr && uxQueueMessagesWaiting(notification_queue) > 0;
 }
 
 static void notification_queue_clear() {
-	atomic_store_explicit(&notification_queue_clear_requested, true, memory_order_release);
-	if (!notification_queue_try_lock()) return;
-
-	notification_queue_reset_locked();
-	notification_queue_unlock();
-}
-
-static void notification_queue_reset_locked() {
-	notification_packet_head = 0;
-	notification_packet_tail = 0;
-	atomic_store_explicit(&notification_packet_count, 0, memory_order_release);
-	atomic_store_explicit(&notification_queue_clear_requested, false, memory_order_release);
+	if (notification_queue == nullptr) return;
+	(void)xQueueReset(notification_queue);
 }
 
 static bool notification_queue_push_packet(const u8 *data, const u8 len) {
 	if (data == nullptr || len == 0 || len > NOTIFICATION_MTU) return false;
-	if (!notification_queue_try_lock()) return false;
+	if (notification_queue == nullptr) return false;
 
-	if (atomic_load_explicit(&notification_queue_clear_requested, memory_order_acquire)) notification_queue_reset_locked();
+	notification_packet_t packet = {0};
+	memcpy(packet.data, data, len);
+	packet.len = len;
 
-	if (atomic_load_explicit(&notification_packet_count, memory_order_relaxed) == NOTIFICATION_QUEUE_SIZE) {
-		notification_queue_unlock();
-		return false;
-	}
-
-	memcpy(notification_packets[notification_packet_tail].data, data, len);
-	notification_packets[notification_packet_tail].len = len;
-	notification_packet_tail = (notification_packet_tail + 1) % NOTIFICATION_QUEUE_SIZE;
-	atomic_fetch_add_explicit(&notification_packet_count, 1, memory_order_release);
-	notification_queue_unlock();
-	return true;
+	return xQueueSend(notification_queue, &packet, 0) == pdTRUE;
 }
 
 static bool notification_queue_pop_packet(notification_packet_t *packet) {
 	if (packet == nullptr) return false;
-	if (!notification_queue_try_lock()) return false;
+	if (notification_queue == nullptr) return false;
 
-	if (atomic_load_explicit(&notification_queue_clear_requested, memory_order_acquire)) {
-		notification_queue_reset_locked();
-		notification_queue_unlock();
-		return false;
-	}
-
-	if (atomic_load_explicit(&notification_packet_count, memory_order_relaxed) == 0) {
-		notification_queue_unlock();
-		return false;
-	}
-
-	*packet = notification_packets[notification_packet_head];
-	notification_packet_head = (notification_packet_head + 1) % NOTIFICATION_QUEUE_SIZE;
-	atomic_fetch_sub_explicit(&notification_packet_count, 1, memory_order_release);
-	notification_queue_unlock();
-	return true;
+	return xQueueReceive(notification_queue, packet, 0) == pdTRUE;
 }
 
 static u16 read_notification_configuration(const bool enabled, const u16 offset, u8 *buffer,

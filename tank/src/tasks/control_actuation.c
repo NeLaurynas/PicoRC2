@@ -16,4 +16,3 @@ void task_control_actuation(void *task_parameter) {
 		control_actuation_apply();
 	}
 }
-
