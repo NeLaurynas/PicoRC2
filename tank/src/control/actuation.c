@@ -7,6 +7,14 @@
 #include "modules/engine/engine.h"
 #include "modules/leds/leds.h"
 
+static control_state_t disconnected_control() {
+	return (control_state_t){
+		.white_leds = state.control.white_leds,
+		.red_led = state.control.red_led,
+		.advanced_mode = state.control.advanced_mode,
+	};
+}
+
 void control_actuation_init() {
 	main_engine_init();
 	leds_init();
@@ -46,17 +54,7 @@ void control_actuation_apply() {
 			turret_ctrl_lift(0);
 		}
 
-		state.control.x = 0;
-		state.control.y = 0;
-		state.control.rx = 0;
-		state.control.ry = 0;
-		state.control.dpad_up = false;
-		state.control.dpad_down = false;
-		state.control.dpad_left = false;
-		state.control.dpad_right = false;
-		state.control.throttle = 0;
-		state.control.brake = 0;
-		state.control.connected = false;
+		state.control = disconnected_control();
 		telemetry = (telemetry_t){
 			.connected = false,
 			.advanced_mode = state.control.advanced_mode,
