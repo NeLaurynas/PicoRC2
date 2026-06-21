@@ -20,19 +20,10 @@ struct SystemView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                HStack(spacing: 14) {
-                    CPUGauge(fraction: cpuFraction, valueText: cpuText)
+            VStack(spacing: 14) {
+                CPUCard(fraction: cpuFraction, valueText: cpuText)
 
-                    MetricCard(
-                        title: "BOOTS",
-                        value: "\(state.bootCount)",
-                        detail: "stored in LittleFS",
-                        systemImage: "power",
-                        color: .hudGreen
-                    )
-                    .frame(maxWidth: .infinity)
-                }
+                BootsCard(count: state.bootCount)
 
                 MemoryCard(
                     title: "FREERTOS HEAP",
@@ -59,9 +50,9 @@ struct SystemView: View {
     }
 }
 
-// MARK: - CPU gauge
+// MARK: - CPU load card
 
-private struct CPUGauge: View {
+private struct CPUCard: View {
     let fraction: Double
     let valueText: String
 
@@ -75,83 +66,107 @@ private struct CPUGauge: View {
         return .hudGreen
     }
 
-    var body: some View {
-        VStack(spacing: 12) {
-            Text("CPU LOAD")
-                .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                .tracking(2)
-                .foregroundStyle(.white.opacity(0.5))
-
-            ZStack {
-                Circle()
-                    .stroke(.white.opacity(0.08), lineWidth: 10)
-
-                Circle()
-                    .trim(from: 0, to: max(0.001, fraction))
-                    .stroke(
-                        AngularGradient(
-                            colors: [color.opacity(0.55), color],
-                            center: .center
-                        ),
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .shadow(color: color.opacity(0.6), radius: 6)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: fraction)
-
-                VStack(spacing: 0) {
-                    Text(valueText)
-                        .font(.system(size: 26, weight: .bold, design: .monospaced))
-                        .foregroundStyle(color)
-                    Text("%")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
-                }
-            }
-            .frame(width: 120, height: 120)
+    private var statusLabel: String {
+        if fraction >= 0.85 {
+            return "CRITICAL"
         }
-        .padding(18)
-        .frame(maxWidth: .infinity)
+        if fraction >= 0.6 {
+            return "HIGH"
+        }
+        return "NOMINAL"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "gauge.with.dots.needle.67percent")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(color)
+
+                Text("CPU LOAD")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Spacer(minLength: 8)
+
+                StatusPill(text: statusLabel, color: color)
+            }
+
+            MetricBar(fraction: fraction, color: color)
+                .frame(height: 22)
+                .overlay(alignment: .trailing) {
+                    Text("\(valueText)%")
+                        .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.45), radius: 2)
+                        .padding(.trailing, 9)
+                }
+
+            Text("RP2350 · realtime utilisation")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.45))
+        }
+        .padding(16)
         .glassPanel(cornerRadius: 22, accent: color)
     }
 }
 
-// MARK: - Metric card
-
-private struct MetricCard: View {
-    let title: String
-    let value: String
-    let detail: String
-    let systemImage: String
+private struct StatusPill: View {
+    let text: String
     let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(color)
-                Text(title)
+        Text(text)
+            .font(.system(size: 9, weight: .heavy, design: .monospaced))
+            .tracking(1)
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(color.opacity(0.15)))
+            .overlay(Capsule().stroke(color.opacity(0.4), lineWidth: 1))
+    }
+}
+
+// MARK: - Boots card (slim)
+
+private struct BootsCard: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.hudGreen.opacity(0.15))
+                    .frame(width: 34, height: 34)
+
+                Image(systemName: "power")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.hudGreen)
+            }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("BOOTS")
                     .font(.system(size: 10, weight: .heavy, design: .monospaced))
                     .tracking(1.5)
                     .foregroundStyle(.white.opacity(0.55))
+
+                Text("stored in LittleFS")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
             }
 
             Spacer(minLength: 0)
 
-            Text(value)
-                .font(.system(size: 32, weight: .bold, design: .monospaced))
+            Text("\(count)")
+                .font(.system(size: 28, weight: .bold, design: .monospaced))
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
-                .foregroundStyle(color)
-
-            Text(detail)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(.hudGreen)
         }
-        .frame(maxWidth: .infinity, minHeight: 156, alignment: .leading)
-        .padding(16)
-        .glassPanel(cornerRadius: 22)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .glassPanel(cornerRadius: 18)
     }
 }
 

@@ -31,44 +31,45 @@ struct StatusBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 9) {
             ZStack {
                 Circle()
-                    .stroke(dotColor.opacity(0.7), lineWidth: 2)
-                    .frame(width: 14, height: 14)
-                    .scaleEffect(ping ? 2.1 : 1.0)
+                    .stroke(dotColor.opacity(0.7), lineWidth: 1.5)
+                    .frame(width: 9, height: 9)
+                    .scaleEffect(ping ? 2.2 : 1.0)
                     .opacity(ping ? 0.0 : 0.9)
 
                 Circle()
                     .fill(dotColor)
-                    .frame(width: 12, height: 12)
-                    .shadow(color: dotColor, radius: 6)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: dotColor, radius: 4)
             }
-            .frame(width: 30)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text("PICO·RC")
-                    .font(.system(size: 15, weight: .heavy, design: .monospaced))
-                    .tracking(3)
-                    .foregroundStyle(.white)
+            Text("PICO·RC")
+                .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                .tracking(2.5)
+                .foregroundStyle(.white)
 
-                Text(status.uppercased())
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .tracking(0.5)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .foregroundStyle(dotColor.opacity(0.95))
-            }
+            Text("·")
+                .font(.system(size: 12, weight: .heavy))
+                .foregroundStyle(.white.opacity(0.25))
+
+            Text(status.uppercased())
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .tracking(0.5)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .foregroundStyle(dotColor.opacity(0.95))
 
             Spacer(minLength: 0)
 
             Image(systemName: isConnected ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(dotColor.opacity(0.9))
                 .symbolEffect(.variableColor.iterative, options: .repeating, isActive: !isConnected)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
         .background(
             ZStack {
                 Color.black.opacity(0.35)

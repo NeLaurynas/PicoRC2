@@ -15,9 +15,12 @@ struct TankView: View {
             VStack(spacing: 12) {
                 StatusChips(state: state)
 
-                TurretPanel(rotate: state.turretRotate, lift: state.turretLift)
-
-                DrivePanel(left: state.mainLeft, right: state.mainRight)
+                TankControlPanel(
+                    left: state.mainLeft,
+                    right: state.mainRight,
+                    rotate: state.turretRotate,
+                    lift: state.turretLift
+                )
             }
             .padding(14)
             .frame(maxWidth: 720)
