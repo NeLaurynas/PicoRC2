@@ -63,6 +63,11 @@ static void set_motor(const pwm_motor_t *const motor, const i32 val, const u16 p
 	*motor->cc = pwm;
 }
 
+static i8 command_value(const i32 val, const i32 deadzone, const i32 max_val) {
+	const auto magnitude = utils_scaled_pwm_percentage(val, deadzone, max_val);
+	return (i8)(val < 0 ? -magnitude : magnitude);
+}
+
 static void adjust_drive_pwm(u16 *pwm) {
 	if (*pwm == 0) return;
 	if (*pwm >= main_pwm_top) {
@@ -113,7 +118,7 @@ void main_engine_init() {
 	sleep_ms(1);
 }
 
-void main_engine_advanced(const i32 left, const i32 right) {
+main_engine_command_t main_engine_advanced(const i32 left, const i32 right) {
 	u16 pwm_left = utils_scaled_pwm_percentage(left, XY_DEAD_ZONE, XY_MAX);
 	u16 pwm_right = utils_scaled_pwm_percentage(right, XY_DEAD_ZONE, XY_MAX);
 	if (left < 0) pwm_left += 1;
@@ -124,9 +129,14 @@ void main_engine_advanced(const i32 left, const i32 right) {
 
 	set_motor(&main_left, left, pwm_left);
 	set_motor(&main_right, right, pwm_right);
+
+	return (main_engine_command_t){
+		.left = command_value(left, XY_DEAD_ZONE, XY_MAX),
+		.right = command_value(right, XY_DEAD_ZONE, XY_MAX),
+	};
 }
 
-void main_engine_basic(const i32 gas, const i32 steer, i32 *left, i32 *right) {
+main_engine_command_t main_engine_basic(const i32 gas, const i32 steer) {
 	const bool go_left = steer < 0;
 	const bool go_backward = gas < 0;
 	const auto steer_perc = utils_scaled_pwm_percentage(steer, XY_DEAD_ZONE, XY_MAX);
@@ -170,8 +180,10 @@ void main_engine_basic(const i32 gas, const i32 steer, i32 *left, i32 *right) {
 	set_motor(&main_left, gas_left, pwm_left);
 	set_motor(&main_right, gas_right, pwm_right);
 
-	if (left != nullptr) *left = gas_left;
-	if (right != nullptr) *right = gas_right;
+	return (main_engine_command_t){
+		.left = command_value(gas_left, TRIG_DEAD_ZONE, TRIG_MAX),
+		.right = command_value(gas_right, TRIG_DEAD_ZONE, TRIG_MAX),
+	};
 }
 
 void turret_ctrl_init() {
@@ -191,16 +203,18 @@ void turret_ctrl_init() {
 	sleep_ms(1);
 }
 
-void turret_ctrl_rotate(const i32 val) {
+i8 turret_ctrl_rotate(const i32 val) {
 	u16 pwm = utils_scaled_pwm_percentage(val, XY_DEAD_ZONE, XY_MAX) * 100;
 	adjust_rotate_pwm(&pwm);
 
 	set_motor(&turret_rotate, val, pwm);
+	return command_value(val, XY_DEAD_ZONE, XY_MAX);
 }
 
-void turret_ctrl_lift(const i32 val) {
+i8 turret_ctrl_lift(const i32 val) {
 	const bool active = abs(val) > XY_DEAD_ZONE + 200;
 	gpio_put(MOD_TURRET_CTRL_PWM2, active);
 	gpio_put(MOD_TURRET_CTRL_ENABLE3, active && val > 0);
 	gpio_put(MOD_TURRET_CTRL_ENABLE4, active && val < 0);
+	return command_value(val, XY_DEAD_ZONE + 200, XY_MAX);
 }

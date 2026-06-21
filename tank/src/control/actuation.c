@@ -3,16 +3,9 @@
 
 #include "control/actuation.h"
 
-#include <utils.h>
-
 #include "defines/config.h"
 #include "modules/engine/engine.h"
 #include "modules/leds/leds.h"
-
-static i8 normalized_command(const i32 val, const i32 deadzone, const i32 max_val) {
-	const auto magnitude = utils_scaled_pwm_percentage(val, deadzone, max_val);
-	return (i8)(val < 0 ? -magnitude : magnitude);
-}
 
 void control_actuation_init() {
 	main_engine_init();
@@ -48,7 +41,7 @@ void control_actuation_apply() {
 
 	if (!desired_state.control.connected) {
 		if (state.control.connected) {
-			main_engine_basic(0, 0, nullptr, nullptr);
+			(void)main_engine_basic(0, 0);
 			turret_ctrl_rotate(0);
 			turret_ctrl_lift(0);
 		}
@@ -84,9 +77,9 @@ void control_actuation_apply() {
 		if (state.control.y != desired_state.control.y || state.control.ry != desired_state.control.ry) {
 			state.control.y = desired_state.control.y;
 			state.control.ry = desired_state.control.ry;
-			main_engine_advanced(desired_state.control.y, desired_state.control.ry);
-			telemetry.main_left = normalized_command(desired_state.control.y, XY_DEAD_ZONE, XY_MAX);
-			telemetry.main_right = normalized_command(desired_state.control.ry, XY_DEAD_ZONE, XY_MAX);
+			const auto main = main_engine_advanced(desired_state.control.y, desired_state.control.ry);
+			telemetry.main_left = main.left;
+			telemetry.main_right = main.right;
 		}
 	} else {
 		if (
@@ -96,11 +89,9 @@ void control_actuation_apply() {
 			state.control.brake = desired_state.control.brake;
 			state.control.throttle = desired_state.control.throttle;
 			state.control.x = desired_state.control.x;
-			i32 left;
-			i32 right;
-			main_engine_basic(desired_state.control.throttle - desired_state.control.brake, desired_state.control.x, &left, &right);
-			telemetry.main_left = normalized_command(left, TRIG_DEAD_ZONE, TRIG_MAX);
-			telemetry.main_right = normalized_command(right, TRIG_DEAD_ZONE, TRIG_MAX);
+			const auto main = main_engine_basic(desired_state.control.throttle - desired_state.control.brake, desired_state.control.x);
+			telemetry.main_left = main.left;
+			telemetry.main_right = main.right;
 		}
 	}
 
@@ -108,15 +99,13 @@ void control_actuation_apply() {
 		state.control.dpad_left = desired_state.control.dpad_left;
 		state.control.dpad_right = desired_state.control.dpad_right;
 		const i32 rotate = (desired_state.control.dpad_left ? -XY_MAX : 0) + (desired_state.control.dpad_right ? XY_MAX : 0);
-		turret_ctrl_rotate(rotate);
-		telemetry.turret_rotate = normalized_command(rotate, XY_DEAD_ZONE, XY_MAX);
+		telemetry.turret_rotate = turret_ctrl_rotate(rotate);
 	}
 	if (state.control.dpad_up != desired_state.control.dpad_up || state.control.dpad_down != desired_state.control.dpad_down) {
 		state.control.dpad_up = desired_state.control.dpad_up;
 		state.control.dpad_down = desired_state.control.dpad_down;
 		const i32 lift = (desired_state.control.dpad_up ? XY_MAX : 0) + (desired_state.control.dpad_down ? -XY_MAX : 0);
-		turret_ctrl_lift(lift);
-		telemetry.turret_lift = normalized_command(lift, XY_DEAD_ZONE + 200, XY_MAX);
+		telemetry.turret_lift = turret_ctrl_lift(lift);
 	}
 
 	state_telemetry_sync_store(&telemetry);
