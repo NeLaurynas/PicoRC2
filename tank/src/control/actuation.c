@@ -15,6 +15,14 @@ static control_state_t disconnected_control() {
 	};
 }
 
+static bool sync_button_pair(bool *const state_a, bool *const state_b, const bool desired_a, const bool desired_b) {
+	if (*state_a == desired_a && *state_b == desired_b) return false;
+
+	*state_a = desired_a;
+	*state_b = desired_b;
+	return true;
+}
+
 void control_actuation_init() {
 	main_engine_init();
 	leds_init();
@@ -25,24 +33,15 @@ void control_actuation_apply() {
 	telemetry_t telemetry;
 	state_telemetry_sync_load(&telemetry);
 
-	if (state.control.btn_start != desired_state.control.btn_start || state.control.btn_select != desired_state.control.btn_select) {
-		state.control.btn_start = desired_state.control.btn_start;
-		state.control.btn_select = desired_state.control.btn_select;
-		const bool toggle_advanced = desired_state.control.btn_start && desired_state.control.btn_select;
-		if (toggle_advanced) {
-			state.control.advanced_mode = !state.control.advanced_mode;
-		}
+	if (sync_button_pair(&state.control.btn_start, &state.control.btn_select, desired_state.control.btn_start, desired_state.control.btn_select)) {
+		if (desired_state.control.btn_start && desired_state.control.btn_select) state.control.advanced_mode = !state.control.advanced_mode;
 	}
 
-	if (state.control.btn_a != desired_state.control.btn_a || state.control.btn_y != desired_state.control.btn_y) {
-		state.control.btn_a = desired_state.control.btn_a;
-		state.control.btn_y = desired_state.control.btn_y;
+	if (sync_button_pair(&state.control.btn_a, &state.control.btn_y, desired_state.control.btn_a, desired_state.control.btn_y)) {
 		if (desired_state.control.btn_a || desired_state.control.btn_y) state.control.white_leds = !state.control.white_leds;
 		leds_toggle_white(state.control.white_leds);
 	}
-	if (state.control.btn_x != desired_state.control.btn_x || state.control.btn_b != desired_state.control.btn_b) {
-		state.control.btn_x = desired_state.control.btn_x;
-		state.control.btn_b = desired_state.control.btn_b;
+	if (sync_button_pair(&state.control.btn_x, &state.control.btn_b, desired_state.control.btn_x, desired_state.control.btn_b)) {
 		if (desired_state.control.btn_x || desired_state.control.btn_b) state.control.red_led = !state.control.red_led;
 		leds_toggle_red(state.control.red_led);
 	}
