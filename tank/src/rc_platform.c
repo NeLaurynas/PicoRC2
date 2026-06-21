@@ -14,8 +14,6 @@
 #error "Pico W must use BLUEPAD32_PLATFORM_CUSTOM"
 #endif
 
-static void trigger_event_on_gamepad(uni_hid_device_t *d);
-
 static void rc_platform_init(int argc, const char **argv) {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
@@ -93,6 +91,13 @@ static const uni_property_t *rc_platform_get_property(uni_property_idx_t idx) {
 	return nullptr;
 }
 
+static void trigger_event_on_gamepad(uni_hid_device_t *d) {
+	if (d->report_parser.play_dual_rumble != nullptr) {
+		d->report_parser.play_dual_rumble(d, 0 /* delayed start ms */, 50 /* duration ms */, 128 /* weak magnitude */,
+		                                  40 /* strong magnitude */);
+	}
+}
+
 static void rc_platform_on_oob_event(uni_platform_oob_event_t event, void *data) {
 	switch (event) {
 		case UNI_PLATFORM_OOB_GAMEPAD_SYSTEM_BUTTON:
@@ -105,13 +110,6 @@ static void rc_platform_on_oob_event(uni_platform_oob_event_t event, void *data)
 
 		default:
 			logi("rc_platform_on_oob_event: unsupported event: 0x%04x\n", event);
-	}
-}
-
-static void trigger_event_on_gamepad(uni_hid_device_t *d) {
-	if (d->report_parser.play_dual_rumble != nullptr) {
-		d->report_parser.play_dual_rumble(d, 0 /* delayed start ms */, 50 /* duration ms */, 128 /* weak magnitude */,
-		                                  40 /* strong magnitude */);
 	}
 }
 

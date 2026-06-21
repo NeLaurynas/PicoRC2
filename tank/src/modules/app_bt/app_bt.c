@@ -162,14 +162,23 @@ static bool tank_state_queue_packet(const app_bt_packet_type_t type, const u8 by
 	return push_versioned_packet(type, TANK_STATE_VERSION, payload, len);
 }
 
+static void tank_state_remember(const u8 bytes[TANK_STATE_LEN]) {
+	memcpy(tank_state_previous, bytes, sizeof tank_state_previous);
+	tank_state_previous_valid = true;
+}
+
+static bool tank_state_queue_full(const u8 bytes[TANK_STATE_LEN]) {
+	if (!tank_state_queue_packet(APP_BT_PACKET_TANK_STATE_FULL, bytes, 0)) return false;
+
+	tank_state_remember(bytes);
+	return true;
+}
+
 static void tank_state_queue_full_snapshot() {
 	u8 bytes[TANK_STATE_LEN];
 	tank_state_build_current(bytes);
 
-	if (!tank_state_queue_packet(APP_BT_PACKET_TANK_STATE_FULL, bytes, 0)) return;
-
-	memcpy(tank_state_previous, bytes, sizeof tank_state_previous);
-	tank_state_previous_valid = true;
+	if (!tank_state_queue_full(bytes)) return;
 	tank_state_tick = 0;
 }
 
@@ -185,9 +194,7 @@ static void tank_state_queue_tick_packet() {
 	tank_state_tick++;
 	if (tank_state_tick >= TANK_STATE_FULL_INTERVAL) {
 		tank_state_tick = 0;
-		if (!tank_state_queue_packet(APP_BT_PACKET_TANK_STATE_FULL, bytes, 0)) return;
-
-		memcpy(tank_state_previous, bytes, sizeof tank_state_previous);
+		(void)tank_state_queue_full(bytes);
 		return;
 	}
 
@@ -198,7 +205,7 @@ static void tank_state_queue_tick_packet() {
 
 	if (!tank_state_queue_packet(APP_BT_PACKET_TANK_STATE_DIFF, bytes, changed_mask)) return;
 
-	memcpy(tank_state_previous, bytes, sizeof tank_state_previous);
+	tank_state_remember(bytes);
 }
 
 static void system_state_build_current(u8 bytes[SYSTEM_STATE_LEN]) {
