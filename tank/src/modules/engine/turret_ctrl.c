@@ -3,7 +3,6 @@
 
 #include "turret_ctrl.h"
 
-#include <hardware/dma.h>
 #include <hardware/gpio.h>
 #include <hardware/pwm.h>
 #include <pico/time.h>
@@ -12,17 +11,9 @@
 
 #include "defines/config.h"
 
-static uint slice1 = 0;
-static uint channel1 = 0;
-static u32 buffer[1] = { 0 };
+static u16 *cc1 = nullptr;
 static constexpr u16 pwm_top = 10000;
 static constexpr u16 pwm_full = pwm_top + 1;
-
-static void buffer_set_pwm(const uint channel, const u16 pwm) {
-	buffer[0] = (channel == 1)
-		? (buffer[0] & 0b00000000'00000000'11111111'11111111u) | ((u32)pwm << 16)
-		: (buffer[0] & 0b11111111'11111111'00000000'00000000u) | (pwm & 0b11111111'11111111u);
-}
 
 void turret_ctrl_init() {
 	gpio_init(MOD_TURRET_CTRL_ENABLE1);
@@ -37,8 +28,8 @@ void turret_ctrl_init() {
 	gpio_set_dir(MOD_TURRET_CTRL_PWM2, true);
 	gpio_set_function(MOD_TURRET_CTRL_PWM1, GPIO_FUNC_PWM);
 
-	slice1 = pwm_gpio_to_slice_num(MOD_TURRET_CTRL_PWM1);
-	channel1 = pwm_gpio_to_channel(MOD_TURRET_CTRL_PWM1);
+	const u8 slice1 = pwm_gpio_to_slice_num(MOD_TURRET_CTRL_PWM1);
+	const u8 channel1 = pwm_gpio_to_channel(MOD_TURRET_CTRL_PWM1);
 
 	// init PWM
 	auto pwm_c1 = pwm_get_default_config();
@@ -49,15 +40,7 @@ void turret_ctrl_init() {
 	pwm_set_enabled(slice1, true);
 	sleep_ms(1);
 
-	// init DMA
-	if (dma_channel_is_claimed(MOD_TURRET_CTRL_DMA_CH)) utils_error_mode(13);
-	dma_channel_claim(MOD_TURRET_CTRL_DMA_CH);
-	auto dma_cc_c1 = dma_channel_get_default_config(MOD_TURRET_CTRL_DMA_CH);
-	channel_config_set_transfer_data_size(&dma_cc_c1, DMA_SIZE_32);
-	channel_config_set_read_increment(&dma_cc_c1, false);
-	channel_config_set_write_increment(&dma_cc_c1, false);
-	channel_config_set_dreq(&dma_cc_c1, DREQ_FORCE);
-	dma_channel_configure(MOD_TURRET_CTRL_DMA_CH, &dma_cc_c1, &pwm_hw->slice[slice1].cc, buffer, 1, false);
+	cc1 = utils_pwm_cc_for_16bit(slice1, channel1);
 	sleep_ms(1);
 }
 
@@ -78,11 +61,9 @@ static void adjust_pwm(u16 *pwm) {
 }
 
 static void set_motor_ctrl(const i32 val, const u16 pwm) {
-	buffer_set_pwm(channel1, pwm);
-
 	gpio_put(MOD_TURRET_CTRL_ENABLE1, val > 0);
 	gpio_put(MOD_TURRET_CTRL_ENABLE2, val < 0);
-	dma_channel_transfer_from_buffer_now(MOD_TURRET_CTRL_DMA_CH, buffer, 1);
+	*cc1 = pwm;
 }
 
 void turret_ctrl_rotate(const i32 val) {

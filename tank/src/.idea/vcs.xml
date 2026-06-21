@@ -6,7 +6,6 @@
     <mapping directory="$PROJECT_DIR$/../../lib/FreeRTOS-Kernel/portable/ThirdParty/Community-Supported-Ports" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../lib/FreeRTOS-Kernel/portable/ThirdParty/Partner-Supported-Ports" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../lib/bluepad32" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../lib/littlefs" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../lib/pico-shared" vcs="Git" />
     <mapping directory="$PICO_SDK_PATH$" vcs="Git" />
     <mapping directory="$PICO_SDK_PATH$/lib/btstack" vcs="Git" />

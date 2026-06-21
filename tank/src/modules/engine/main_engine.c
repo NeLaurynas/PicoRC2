@@ -3,7 +3,6 @@
 
 #include "main_engine.h"
 
-#include <hardware/dma.h>
 #include <hardware/gpio.h>
 #include <hardware/pwm.h>
 #include <pico/time.h>
@@ -12,19 +11,10 @@
 #include "defines/config.h"
 #include "state.h"
 
-static u8 slice1 = 0;
-static u8 slice2 = 0;
-static u8 channel1 = 0;
-static u8 channel2 = 0;
-static u32 buffer[1] = { 0 };
+static u16 *cc1 = nullptr;
+static u16 *cc2 = nullptr;
 static constexpr u16 pwm_top = 100;
 static constexpr u16 pwm_full = pwm_top + 1;
-
-static void buffer_set_pwm(const uint channel, const u16 pwm) {
-	buffer[0] = (channel == 1)
-		? (buffer[0] & 0b00000000'00000000'11111111'11111111u) | ((u32)pwm << 16)
-		: (buffer[0] & 0b11111111'11111111'00000000'00000000u) | (pwm & 0b11111111'11111111u);
-}
 
 static void pwm_slice_init(const uint slice, const float clk_div) {
 	auto cfg = pwm_get_default_config();
@@ -35,17 +25,6 @@ static void pwm_slice_init(const uint slice, const float clk_div) {
 	pwm_set_enabled(slice, true);
 }
 
-static void pwm_dma_init(const uint dma_ch, const uint slice, const i32 error_code) {
-	if (dma_channel_is_claimed(dma_ch)) utils_error_mode(error_code);
-	dma_channel_claim(dma_ch);
-	auto cfg = dma_channel_get_default_config(dma_ch);
-	channel_config_set_transfer_data_size(&cfg, DMA_SIZE_32);
-	channel_config_set_read_increment(&cfg, false);
-	channel_config_set_write_increment(&cfg, false);
-	channel_config_set_dreq(&cfg, DREQ_FORCE);
-	dma_channel_configure(dma_ch, &cfg, &pwm_hw->slice[slice].cc, buffer, 1, false);
-}
-
 void main_engine_init() {
 	gpio_init(MOD_ENGINE_MAIN_ENABLE1);
 	gpio_init(MOD_ENGINE_MAIN_ENABLE2);
@@ -54,10 +33,10 @@ void main_engine_init() {
 	gpio_set_function(MOD_ENGINE_MAIN_PWM1, GPIO_FUNC_PWM);
 	gpio_set_function(MOD_ENGINE_MAIN_PWM2, GPIO_FUNC_PWM);
 
-	slice1 = pwm_gpio_to_slice_num(MOD_ENGINE_MAIN_PWM1);
-	slice2 = pwm_gpio_to_slice_num(MOD_ENGINE_MAIN_PWM2);
-	channel1 = pwm_gpio_to_channel(MOD_ENGINE_MAIN_PWM1);
-	channel2 = pwm_gpio_to_channel(MOD_ENGINE_MAIN_PWM2);
+	const u8 slice1 = pwm_gpio_to_slice_num(MOD_ENGINE_MAIN_PWM1);
+	const u8 slice2 = pwm_gpio_to_slice_num(MOD_ENGINE_MAIN_PWM2);
+	const u8 channel1 = pwm_gpio_to_channel(MOD_ENGINE_MAIN_PWM1);
+	const u8 channel2 = pwm_gpio_to_channel(MOD_ENGINE_MAIN_PWM2);
 
 	const auto clk_div = utils_calculate_pio_clk_div(0.5f); // 3.f for 5 khz frequency (2.f for 7.5 khz 1.f for 15 khz)
 	if (state.app_settings.debug_logs) utils_printf("MAIN ENGINE CLK DIV: %f\n", clk_div);
@@ -66,20 +45,17 @@ void main_engine_init() {
 	pwm_slice_init(slice2, clk_div);
 	sleep_ms(1);
 
-	pwm_dma_init(MOD_ENGINE_MAIN_DMA_CH1, slice1, 10);
-	pwm_dma_init(MOD_ENGINE_MAIN_DMA_CH2, slice2, 11);
+	cc1 = utils_pwm_cc_for_16bit(slice1, channel1);
+	cc2 = utils_pwm_cc_for_16bit(slice2, channel2);
 	sleep_ms(1);
 }
 
 static void set_motor_ctrl(const i32 val, const u16 pwm, const bool is_left_motor) {
 	const u8 enable_pin = is_left_motor ? MOD_ENGINE_MAIN_ENABLE1 : MOD_ENGINE_MAIN_ENABLE2;
-	const u8 dma_ch = is_left_motor ? MOD_ENGINE_MAIN_DMA_CH1 : MOD_ENGINE_MAIN_DMA_CH2;
-	const u8 channel = is_left_motor ? channel1 : channel2;
-
-	buffer_set_pwm(channel, pwm);
+	u16 *const cc = is_left_motor ? cc1 : cc2;
 
 	gpio_put(enable_pin, val < 0);
-	dma_channel_transfer_from_buffer_now(dma_ch, buffer, 1);
+	*cc = pwm;
 }
 
 static void adjust_pwm(u16 *pwm) {

@@ -146,7 +146,6 @@ add_executable(${PROJECT_NAME}
 		modules/engine/main_engine.h
 		modules/leds/leds.c
 		modules/leds/leds.h
-		modules/log_sink/log_sink.c
 )
 
 pico_set_program_name(${PROJECT_NAME} "${PROJECT_NAME}")
@@ -252,7 +251,6 @@ target_link_libraries(${PROJECT_NAME}
 		pico_btstack_classic
 		pico_btstack_cyw43
 		hardware_clocks
-		hardware_dma
 		hardware_flash
 		hardware_pio
 		hardware_pwm
