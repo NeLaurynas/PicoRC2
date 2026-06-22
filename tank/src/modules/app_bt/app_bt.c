@@ -24,8 +24,8 @@
 #define APP_BT_ADV_CHANNEL_MAP 0b00000111
 #define TANK_STATE_VERSION 2
 #define TANK_STATE_LEN 5
-#define SYSTEM_STATE_VERSION 2
-#define SYSTEM_STATE_LEN 12
+#define SYSTEM_STATE_VERSION 3
+#define SYSTEM_STATE_LEN 16
 #define APP_SETTINGS_VERSION 1
 #define APP_SETTINGS_LEN 2
 #define APP_SETTINGS_DEBUG_LOGS_FLAG 0b00000001
@@ -189,11 +189,13 @@ static void system_state_build_current(u8 bytes[SYSTEM_STATE_LEN]) {
 	state_system_telemetry_sync_load(&telemetry);
 
 	little_endian_store_16(bytes, 0, telemetry.cpu_x10);
-	little_endian_store_16(bytes, 2, telemetry.freertos_used_kib);
-	little_endian_store_16(bytes, 4, telemetry.freertos_total_kib);
-	little_endian_store_16(bytes, 6, telemetry.system_used_kib);
-	little_endian_store_16(bytes, 8, telemetry.system_total_kib);
-	little_endian_store_16(bytes, 10, telemetry.boot_count);
+	little_endian_store_16(bytes, 2, telemetry.cpu_speed_mhz_x100);
+	little_endian_store_16(bytes, 4, (u16)telemetry.cpu_temp_c_x100);
+	little_endian_store_16(bytes, 6, telemetry.freertos_used_kib);
+	little_endian_store_16(bytes, 8, telemetry.freertos_total_kib);
+	little_endian_store_16(bytes, 10, telemetry.system_used_kib);
+	little_endian_store_16(bytes, 12, telemetry.system_total_kib);
+	little_endian_store_16(bytes, 14, telemetry.boot_count);
 }
 
 static void system_state_queue_packet() {

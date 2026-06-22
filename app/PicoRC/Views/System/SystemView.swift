@@ -18,10 +18,20 @@ struct SystemView: View {
         "\(state.cpuX10 / 10).\(state.cpuX10 % 10)"
     }
 
+    private var cpuSpeedText: String {
+        fixedPointText(state.cpuSpeedMHzX100)
+    }
+
+    private var cpuTempText: String {
+        fixedPointText(state.cpuTempCX100)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
                 CPUCard(fraction: cpuFraction, valueText: cpuText)
+
+                HardwareStatsCard(speedText: cpuSpeedText, tempText: cpuTempText)
 
                 BootsCard(count: state.bootCount)
 
@@ -47,6 +57,14 @@ struct SystemView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color.clear)
+    }
+
+    private func fixedPointText(_ value: Int) -> String {
+        let sign = value < 0 ? "-" : ""
+        let absolute = abs(value)
+        let fraction = absolute % 100
+
+        return "\(sign)\(absolute / 100).\(fraction < 10 ? "0" : "")\(fraction)"
     }
 }
 
@@ -131,6 +149,76 @@ private struct StatusPill: View {
             .padding(.vertical, 3)
             .background(Capsule().fill(color.opacity(0.15)))
             .overlay(Capsule().stroke(color.opacity(0.4), lineWidth: 1))
+    }
+}
+
+// MARK: - Hardware stats card
+
+private struct HardwareStatsCard: View {
+    let speedText: String
+    let tempText: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            HardwareStat(
+                title: "CLOCK",
+                systemImage: "speedometer",
+                value: speedText,
+                unit: "MHz",
+                color: .hudCyan
+            )
+
+            Divider()
+                .frame(height: 42)
+                .background(.white.opacity(0.14))
+
+            HardwareStat(
+                title: "TEMP",
+                systemImage: "thermometer.medium",
+                value: tempText,
+                unit: "C",
+                color: .hudAmber
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .glassPanel(cornerRadius: 18)
+    }
+}
+
+private struct HardwareStat: View {
+    let title: String
+    let systemImage: String
+    let value: String
+    let unit: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 7) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(color)
+
+                Text(title)
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 24, weight: .bold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+                    .foregroundStyle(color)
+
+                Text(unit)
+                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(color.opacity(0.7))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

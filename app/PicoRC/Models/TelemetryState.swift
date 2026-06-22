@@ -18,6 +18,8 @@ struct TankTelemetryState: Equatable {
 
 struct SystemTelemetryState: Equatable {
     var cpuX10 = 0
+    var cpuSpeedMHzX100 = 0
+    var cpuTempCX100 = 0
     var freeRTOSUsedKiB = 0
     var freeRTOSTotalKiB = 0
     var systemUsedKiB = 0

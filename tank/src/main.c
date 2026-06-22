@@ -20,6 +20,7 @@ int main() {
 	(void)cpu_set_clock_khz(APP_SYS_CLK_KHZ, true);
 
 	stdio_init_all();
+	cpu_init();
 
 // #if DBG
 	// sleep_ms(2000);

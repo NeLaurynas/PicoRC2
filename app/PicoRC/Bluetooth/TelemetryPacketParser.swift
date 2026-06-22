@@ -86,11 +86,13 @@ struct TelemetryPacketParser {
         return .systemState(
             SystemTelemetryState(
                 cpuX10: unsigned16(bytes, at: 2),
-                freeRTOSUsedKiB: unsigned16(bytes, at: 4),
-                freeRTOSTotalKiB: unsigned16(bytes, at: 6),
-                systemUsedKiB: unsigned16(bytes, at: 8),
-                systemTotalKiB: unsigned16(bytes, at: 10),
-                bootCount: unsigned16(bytes, at: 12)
+                cpuSpeedMHzX100: unsigned16(bytes, at: 4),
+                cpuTempCX100: signed16(bytes, at: 6),
+                freeRTOSUsedKiB: unsigned16(bytes, at: 8),
+                freeRTOSTotalKiB: unsigned16(bytes, at: 10),
+                systemUsedKiB: unsigned16(bytes, at: 12),
+                systemTotalKiB: unsigned16(bytes, at: 14),
+                bootCount: unsigned16(bytes, at: 16)
             )
         )
     }
@@ -111,6 +113,10 @@ struct TelemetryPacketParser {
 
     private func unsigned16(_ bytes: [UInt8], at offset: Int) -> Int {
         Int(UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8))
+    }
+
+    private func signed16(_ bytes: [UInt8], at offset: Int) -> Int {
+        Int(Int16(bitPattern: UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8)))
     }
 
     private func signedValue(_ byte: UInt8) -> Int {

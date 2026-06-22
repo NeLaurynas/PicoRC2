@@ -57,6 +57,8 @@ typedef struct {
 
 typedef struct {
 	u16 cpu_x10;
+	u16 cpu_speed_mhz_x100;
+	i16 cpu_temp_c_x100;
 	u16 freertos_used_kib;
 	u16 freertos_total_kib;
 	u16 system_used_kib;
