@@ -16,4 +16,6 @@ void task_debug(void *task_parameter) {
 	tasks_delay(&state.tasks.shutdown);
 
 	// cpu_cores_shutdown_from_core0(); // never returns
+
+	vTaskDelete(nullptr);
 }

@@ -47,8 +47,4 @@ void task_startup(void *task_parameter) {
 	state.tasks.startup.handle = nullptr;
 
 	vTaskDelete(nullptr);
-
-	while (true) {
-		taskYIELD();
-	}
 }
