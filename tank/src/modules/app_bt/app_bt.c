@@ -95,13 +95,6 @@ static bool push_versioned_packet(const app_bt_packet_type_t type, const u8 vers
 	return notification_queue_push_packet(packet, (u8)(payload_len + 2));
 }
 
-static void tank_state_timer_stop() {
-	if (!tank_state_timer_active) return;
-
-	(void)btstack_run_loop_remove_timer(&tank_state_timer);
-	tank_state_timer_active = false;
-}
-
 static void notification_disable(const bool clear_connection, const bool reset_state, const bool reset_mtu) {
 	if (clear_connection) notification_connection_handle = HCI_CON_HANDLE_INVALID;
 	notification_enabled = false;
@@ -110,8 +103,9 @@ static void notification_disable(const bool clear_connection, const bool reset_s
 		tank_state_previous_valid = false;
 		tank_state_tick = 0;
 		atomic_store_explicit(&notification_send_request_pending, false, memory_order_release);
-	} else {
-		tank_state_timer_stop();
+	} else if (tank_state_timer_active) {
+		(void)btstack_run_loop_remove_timer(&tank_state_timer);
+		tank_state_timer_active = false;
 	}
 	if (reset_state || reset_mtu) atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
 	atomic_store_explicit(&notification_client_subscribed, false, memory_order_release);
