@@ -37,7 +37,7 @@ uint32_t frtos_runtime_counter();
 
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-#define configTOTAL_HEAP_SIZE                   (64 * 1024)
+#define configTOTAL_HEAP_SIZE                   (32 * 1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 #define configCHECK_FOR_STACK_OVERFLOW          2

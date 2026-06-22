@@ -29,11 +29,9 @@ struct SystemView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                CPUCard(fraction: cpuFraction, valueText: cpuText)
+                CPUCard(fraction: cpuFraction, valueText: cpuText, clockText: cpuSpeedText)
 
-                HardwareStatsCard(speedText: cpuSpeedText, tempText: cpuTempText)
-
-                BootsCard(count: state.bootCount)
+                MiscCard(tempText: cpuTempText, bootCount: state.bootCount)
 
                 MemoryCard(
                     title: "FREERTOS HEAP",
@@ -73,6 +71,7 @@ struct SystemView: View {
 private struct CPUCard: View {
     let fraction: Double
     let valueText: String
+    let clockText: String
 
     private var color: Color {
         if fraction >= 0.85 {
@@ -127,9 +126,28 @@ private struct CPUCard: View {
             MetricBar(fraction: fraction, color: color)
                 .frame(height: 10)
 
-            Text("RP2350 · realtime utilisation")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.45))
+            HStack(spacing: 7) {
+                Image(systemName: "speedometer")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.hudCyan)
+
+                Text("CLOCK")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Spacer(minLength: 8)
+
+                Text("\(clockText) / 150")
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .foregroundStyle(.hudCyan)
+
+                Text("MHz")
+                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(.hudCyan.opacity(0.7))
+            }
         }
         .padding(16)
         .glassPanel(cornerRadius: 22, accent: color)
@@ -152,33 +170,46 @@ private struct StatusPill: View {
     }
 }
 
-// MARK: - Hardware stats card
+// MARK: - Misc card
 
-private struct HardwareStatsCard: View {
-    let speedText: String
+private struct MiscCard: View {
     let tempText: String
+    let bootCount: Int
 
     var body: some View {
-        HStack(spacing: 14) {
-            HardwareStat(
-                title: "CLOCK",
-                systemImage: "speedometer",
-                value: speedText,
-                unit: "MHz",
-                color: .hudCyan
-            )
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.55))
 
-            Divider()
-                .frame(height: 42)
-                .background(.white.opacity(0.14))
+                Text("MISC")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
+            }
 
-            HardwareStat(
-                title: "TEMP",
-                systemImage: "thermometer.medium",
-                value: tempText,
-                unit: "C",
-                color: .hudAmber
-            )
+            HStack(spacing: 14) {
+                HardwareStat(
+                    title: "TEMP",
+                    systemImage: "thermometer.medium",
+                    value: tempText,
+                    unit: "C",
+                    color: .hudAmber
+                )
+
+                Divider()
+                    .frame(height: 42)
+                    .background(.white.opacity(0.14))
+
+                HardwareStat(
+                    title: "BOOT COUNT",
+                    systemImage: "power",
+                    value: "\(bootCount)",
+                    unit: "",
+                    color: .hudGreen
+                )
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -213,54 +244,14 @@ private struct HardwareStat: View {
                     .minimumScaleFactor(0.65)
                     .foregroundStyle(color)
 
-                Text(unit)
-                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(color.opacity(0.7))
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .foregroundStyle(color.opacity(0.7))
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// MARK: - Boots card (slim)
-
-private struct BootsCard: View {
-    let count: Int
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.hudGreen.opacity(0.15))
-                    .frame(width: 34, height: 34)
-
-                Image(systemName: "power")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.hudGreen)
-            }
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text("BOOTS")
-                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                    .tracking(1.5)
-                    .foregroundStyle(.white.opacity(0.55))
-
-                Text("stored in LittleFS")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
-            }
-
-            Spacer(minLength: 0)
-
-            Text("\(count)")
-                .font(.system(size: 28, weight: .bold, design: .monospaced))
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .foregroundStyle(.hudGreen)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .glassPanel(cornerRadius: 18)
     }
 }
 
