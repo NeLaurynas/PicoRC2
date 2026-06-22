@@ -95,13 +95,6 @@ static bool push_versioned_packet(const app_bt_packet_type_t type, const u8 vers
 	return notification_queue_push_packet(packet, (u8)(payload_len + 2));
 }
 
-static bool notification_queue_pop_packet(notification_packet_t *packet) {
-	if (packet == nullptr) return false;
-	if (notification_queue == nullptr) return false;
-
-	return xQueueReceive(notification_queue, packet, 0) == pdTRUE;
-}
-
 static u16 read_notification_configuration(const bool enabled, const u16 offset, u8 *buffer, const u16 buffer_size) {
 	u8 value[2] = {0, 0};
 	if (enabled) little_endian_store_16(value, 0, GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION);
@@ -147,11 +140,7 @@ static void tank_state_build_current(u8 bytes[TANK_STATE_LEN]) {
 	bytes[4] = (u8)telemetry.turret_lift;
 }
 
-static bool tank_state_queue_packet(const app_bt_packet_type_t type, const u8 bytes[TANK_STATE_LEN], const u8 changed_mask) {
-	if (type == APP_BT_PACKET_TANK_STATE_FULL) {
-		return push_versioned_packet(type, TANK_STATE_VERSION, bytes, TANK_STATE_LEN);
-	}
-
+static bool tank_state_queue_diff(const u8 bytes[TANK_STATE_LEN], const u8 changed_mask) {
 	u8 payload[TANK_STATE_LEN + 1] = {changed_mask};
 	u8 len = 1;
 	for (u8 i = 0; i < TANK_STATE_LEN; i++) {
@@ -159,7 +148,7 @@ static bool tank_state_queue_packet(const app_bt_packet_type_t type, const u8 by
 		payload[len++] = bytes[i];
 	}
 
-	return push_versioned_packet(type, TANK_STATE_VERSION, payload, len);
+	return push_versioned_packet(APP_BT_PACKET_TANK_STATE_DIFF, TANK_STATE_VERSION, payload, len);
 }
 
 static void tank_state_remember(const u8 bytes[TANK_STATE_LEN]) {
@@ -168,7 +157,7 @@ static void tank_state_remember(const u8 bytes[TANK_STATE_LEN]) {
 }
 
 static bool tank_state_queue_full(const u8 bytes[TANK_STATE_LEN]) {
-	if (!tank_state_queue_packet(APP_BT_PACKET_TANK_STATE_FULL, bytes, 0)) return false;
+	if (!push_versioned_packet(APP_BT_PACKET_TANK_STATE_FULL, TANK_STATE_VERSION, bytes, TANK_STATE_LEN)) return false;
 
 	tank_state_remember(bytes);
 	return true;
@@ -203,7 +192,7 @@ static void tank_state_queue_tick_packet() {
 		if (tank_state_previous[i] != bytes[i]) changed_mask |= (u8)(1u << i);
 	}
 
-	if (!tank_state_queue_packet(APP_BT_PACKET_TANK_STATE_DIFF, bytes, changed_mask)) return;
+	if (!tank_state_queue_diff(bytes, changed_mask)) return;
 
 	tank_state_remember(bytes);
 }
@@ -269,10 +258,7 @@ static void notify_client_callback(void *context) {
 	}
 
 	auto packet = (notification_packet_t){0};
-	if (!notification_queue_pop_packet(&packet)) {
-		if (notification_queue_has_packets()) request_notification_send_from_main();
-		return;
-	}
+	if (notification_queue == nullptr || xQueueReceive(notification_queue, &packet, 0) != pdTRUE) return;
 
 	(void)att_server_notify(
 		notification_connection_handle,
