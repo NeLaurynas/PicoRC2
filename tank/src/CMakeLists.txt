@@ -177,10 +177,6 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 		PICO_FLASH_ASSUME_CORE1_SAFE=1
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-		CYW43_PIO_CLOCK_DIV_DYNAMIC=1
-)
-
 target_link_options(${PROJECT_NAME} PRIVATE
 		${BASE_CPU_FEATURE_FLAGS}
 		-Wl,--gc-sections
@@ -235,6 +231,7 @@ target_link_options(littlefs PRIVATE
 target_link_libraries(${PROJECT_NAME}
 		FreeRTOS-Kernel-Heap4
 		littlefs
+		pico_shared_cpu_cores
 		pico_shared_frtos
 		pico_shared_utils
 		pico_shared_memory

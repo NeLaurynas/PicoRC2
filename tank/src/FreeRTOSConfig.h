@@ -4,9 +4,10 @@
 #pragma once
 
 #include <assert.h>
-#include <hardware/platform_defs.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "shared_config.h"
 
 uint32_t frtos_runtime_counter();
 
@@ -14,7 +15,7 @@ uint32_t frtos_runtime_counter();
 #define configUSE_TICKLESS_IDLE                 1
 #define configUSE_IDLE_HOOK                     0
 #define configUSE_TICK_HOOK                     0
-#define configCPU_CLOCK_HZ                      ((uint32_t)SYS_CLK_HZ)
+#define configCPU_CLOCK_HZ                      ((uint32_t)APP_SYS_CLK_HZ)
 #define configTICK_RATE_HZ                      ((TickType_t)1000)
 #define configMAX_PRIORITIES                    7
 #define configMINIMAL_STACK_SIZE                ((configSTACK_DEPTH_TYPE)256)
@@ -99,4 +100,3 @@ uint32_t frtos_runtime_counter();
 #define INCLUDE_xTaskGetHandle                  1
 #define INCLUDE_xTaskResumeFromISR              1
 #define INCLUDE_xQueueGetMutexHolder            1
-

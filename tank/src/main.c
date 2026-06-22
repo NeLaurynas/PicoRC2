@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include <FreeRTOS.h>
-#include <hardware/clocks.h>
 #include <pico/stdio.h>
 #include <pico/time.h>
 #include <stdio.h>
 #include <task.h>
 
+#include "shared_config.h"
+#include "shared_modules/cpu_cores/cpu_cores.h"
 #include "state.h"
 #include "tasks/tasks.h"
 
@@ -16,7 +17,7 @@
 
 [[noreturn]]
 int main() {
-	set_sys_clock_khz(48'000, false);
+	(void)cpu_set_clock_khz(APP_SYS_CLK_KHZ, true);
 
 	stdio_init_all();
 

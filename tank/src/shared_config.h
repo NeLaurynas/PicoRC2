@@ -19,6 +19,9 @@ typedef uint64_t u64;
 #define US_IN_MINUTE  (60ULL * US_IN_SECOND)
 #define US_IN_HOUR    (60ULL * US_IN_MINUTE)
 
+#define APP_SYS_CLK_KHZ 48000u
+#define APP_SYS_CLK_HZ  (APP_SYS_CLK_KHZ * 1000u)
+
 // Single source of truth for DBG. CMake (tank/src/CMakeLists.txt) reads this value
 // and propagates it to the whole build. DBG=1 enables USB/UART logging and asserts;
 // DBG=0 disables USB stdio and routes utils_printf to Bluetooth only.
@@ -26,4 +29,3 @@ typedef uint64_t u64;
 #ifndef DBG
 #define DBG 1
 #endif
-

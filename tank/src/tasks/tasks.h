@@ -57,13 +57,13 @@ void tasks_delay(task_t *task);
 
 #define TASK_HEARTBEAT_STACK_DEPTH TASK_STACK_1024
 #define TASK_HEARTBEAT_PRIORITY TASK_PRIO_2_LOWER
-#define TASK_HEARTBEAT_TICKS SECONDS_TO_TICKS(5)
+#define TASK_HEARTBEAT_TICKS SECONDS_TO_TICKS(10)
 [[noreturn]]
 void task_heartbeat(void *task_parameter);
 
 #define TASK_SYSTEM_MONITOR_STACK_DEPTH TASK_STACK_256
 #define TASK_SYSTEM_MONITOR_PRIORITY TASK_PRIO_1_LOWEST
-#define TASK_SYSTEM_MONITOR_TICKS MS_TO_TICKS(50)
+#define TASK_SYSTEM_MONITOR_TICKS MS_TO_TICKS(500)
 [[noreturn]]
 void task_system_monitor(void *task_parameter);
 
@@ -75,7 +75,7 @@ void task_startup(void *task_parameter);
 
 #define TASK_CONTROL_INPUT_STACK_DEPTH TASK_STACK_256
 #define TASK_CONTROL_INPUT_PRIORITY TASK_PRIO_5_HIGHEST
-#define TASK_CONTROL_INPUT_TICKS US_TO_TICKS(CONTROL_INPUT_TICK_US)
+#define TASK_CONTROL_INPUT_TICKS MS_TO_TICKS(10)
 [[noreturn]]
 void task_control_input(void *task_parameter);
 
