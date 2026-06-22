@@ -9,6 +9,7 @@
       <file path="$PROJECT_DIR$/../../lib/bluepad32/src/components/bluepad32" />
       <file path="$PROJECT_DIR$/../../lib/pico-shared" />
       <file path="$PROJECT_DIR$/../../lib/FreeRTOS-Kernel" />
+      <file path="$PROJECT_DIR$/../../lib/littlefs" />
       <file path="$PROJECT_DIR$/../../../official/pico-sdk" />
     </libraryRoots>
   </component>

@@ -95,13 +95,6 @@ static bool push_versioned_packet(const app_bt_packet_type_t type, const u8 vers
 	return notification_queue_push_packet(packet, (u8)(payload_len + 2));
 }
 
-static u16 read_notification_configuration(const bool enabled, const u16 offset, u8 *buffer, const u16 buffer_size) {
-	u8 value[2] = {0, 0};
-	if (enabled) little_endian_store_16(value, 0, GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION);
-
-	return att_read_callback_handle_blob(value, sizeof value, offset, buffer, buffer_size);
-}
-
 static void tank_state_timer_stop() {
 	if (!tank_state_timer_active) return;
 
@@ -308,13 +301,13 @@ static u16 app_bt_att_read_callback(
 			return att_read_callback_handle_blob(bytes, sizeof bytes, offset, buffer, buffer_size);
 		}
 
-		case ATT_CHARACTERISTIC_F7A4C002_2E2D_4E4B_9F2C_5049434F5243_01_CLIENT_CONFIGURATION_HANDLE:
-			return read_notification_configuration(
-				conn_handle == notification_connection_handle && notification_enabled,
-				offset,
-				buffer,
-				buffer_size
-			);
+		case ATT_CHARACTERISTIC_F7A4C002_2E2D_4E4B_9F2C_5049434F5243_01_CLIENT_CONFIGURATION_HANDLE: {
+			u8 value[2] = {0, 0};
+			if (conn_handle == notification_connection_handle && notification_enabled) {
+				little_endian_store_16(value, 0, GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION);
+			}
+			return att_read_callback_handle_blob(value, sizeof value, offset, buffer, buffer_size);
+		}
 
 		default:
 			return 0;
