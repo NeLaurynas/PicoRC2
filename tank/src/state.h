@@ -87,6 +87,7 @@ typedef struct {
 		task_t system_monitor;
 		task_t control_input;
 		task_t control_actuation;
+		task_t shutdown;
 	} tasks;
 } state_t;
 

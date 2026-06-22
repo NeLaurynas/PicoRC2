@@ -29,6 +29,7 @@ int main() {
 
 	state_init();
 	tasks_create(&state.tasks.startup);
+	tasks_create(&state.tasks.shutdown);
 
 	vTaskStartScheduler();
 

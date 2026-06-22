@@ -49,6 +49,13 @@ state_t state = {
 			.ticks = TASK_CONTROL_ACTUATION_TICKS,
 			.function = task_control_actuation,
 		},
+		.shutdown = {
+			.name = "shutdown",
+			.stack_depth = TASK_SHUTDOWN_STACK_DEPTH,
+			.priority = TASK_SHUTDOWN_PRIORITY,
+			.ticks = TASK_SHUTDOWN_TICKS,
+			.function = task_debug,
+		},
 	},
 };
 

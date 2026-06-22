@@ -84,3 +84,9 @@ void task_control_input(void *task_parameter);
 #define TASK_CONTROL_ACTUATION_TICKS SECONDS_TO_TICKS(1)
 [[noreturn]]
 void task_control_actuation(void *task_parameter);
+
+#define TASK_SHUTDOWN_STACK_DEPTH TASK_STACK_512
+#define TASK_SHUTDOWN_PRIORITY TASK_PRIO_5_HIGHEST
+#define TASK_SHUTDOWN_TICKS SECONDS_TO_TICKS(6)
+[[noreturn]]
+void task_debug(void *task_parameter);

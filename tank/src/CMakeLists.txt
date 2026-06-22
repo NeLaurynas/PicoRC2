@@ -133,6 +133,7 @@ add_executable(${PROJECT_NAME}
 		tasks/control_actuation.c
 		tasks/control_input.c
 		tasks/heartbeat.c
+		tasks/debug.c
 		tasks/startup.c
 		tasks/system_monitor.c
 		tasks/tasks.c
