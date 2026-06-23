@@ -37,8 +37,6 @@ static void rc_platform_on_init_complete() {
 
 	uni_bt_start_scanning_and_autoconnect_unsafe();
 
-	cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-
 	app_bt_start();
 }
 

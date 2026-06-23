@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <task.h>
+#include <utils.h>
 
 #include "state.h"
 #include "storage/app_storage.h"
@@ -17,6 +18,8 @@
 #define PICO2_SRAM_KIB 520U
 #define CPU_SAMPLE_TICKS MS_TO_TICKS(100)
 #define SYSTEM_MEMORY_SAMPLE_TICKS MS_TO_TICKS(10'000)
+
+static bool sys_led_on = true;
 
 static u16 bytes_to_kib(const size_t bytes) {
 	const auto kib = bytes / BYTES_IN_KIB;
@@ -72,6 +75,9 @@ void task_system_monitor(void *task_parameter) {
 
 	while (true) {
 		const auto ticks = xTaskGetTickCount();
+
+		utils_internal_led(sys_led_on);
+		sys_led_on = !sys_led_on;
 
 		if (interval_elapsed(ticks, &cpu_last_sample, CPU_SAMPLE_TICKS)) {
 			float cpu_usage = 0.0f;

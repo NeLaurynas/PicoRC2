@@ -20,18 +20,19 @@ struct uni_platform *get_rc_platform();
 void task_startup(void *task_parameter) {
 	(void)task_parameter;
 
+	if (cyw43_arch_init_with_country(CYW43_COUNTRY_LITHUANIA)) {
+		utils_printf("failed to initialise cyw43_arch\n");
+		utils_error_mode(11); // this will not blink but it's ok, as this is enormous failure - everything's fucked anyways
+	}
+	(void)utils_internal_led_init(cyw43_arch_async_context());
+	utils_internal_led(true);
+
 	if (!app_storage_init()) {
-		utils_error_mode(30);
+		utils_error_mode(21);
 	}
 
 	control_input_init();
 	control_actuation_init();
-
-	if (cyw43_arch_init_with_country(CYW43_COUNTRY_LITHUANIA)) {
-		utils_printf("failed to initialise cyw43_arch\n");
-		utils_error_mode(66);
-	}
-	(void)utils_internal_led_init(cyw43_arch_async_context());
 
 	uni_platform_set_custom(get_rc_platform());
 	uni_init(0, nullptr);

@@ -16,7 +16,9 @@ void task_debug(void *task_parameter) {
 	state.tasks.shutdown.last_wake = 0;
 	tasks_delay(&state.tasks.shutdown);
 
-	utils_error_mode(36);
-
 	// cpu_cores_shutdown_from_core0(); // never returns
+	// utils_error_mode(36);
+
+	state.tasks.shutdown.handle = nullptr;
+	vTaskDelete(nullptr);
 }
