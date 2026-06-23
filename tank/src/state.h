@@ -64,6 +64,7 @@ typedef struct {
 	u16 system_used_kib;
 	u16 system_total_kib;
 	u16 boot_count;
+	u32 uptime_seconds;
 } system_telemetry_t;
 
 typedef struct {

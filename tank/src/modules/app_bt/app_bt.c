@@ -24,8 +24,8 @@
 #define APP_BT_ADV_CHANNEL_MAP 0b00000111
 #define TANK_STATE_VERSION 2
 #define TANK_STATE_LEN 5
-#define SYSTEM_STATE_VERSION 3
-#define SYSTEM_STATE_LEN 16
+#define SYSTEM_STATE_VERSION 4
+#define SYSTEM_STATE_LEN 20
 #define APP_SETTINGS_VERSION 1
 #define APP_SETTINGS_LEN 2
 #define APP_SETTINGS_DEBUG_LOGS_FLAG 0b00000001
@@ -196,6 +196,7 @@ static void system_state_build_current(u8 bytes[SYSTEM_STATE_LEN]) {
 	little_endian_store_16(bytes, 10, telemetry.system_used_kib);
 	little_endian_store_16(bytes, 12, telemetry.system_total_kib);
 	little_endian_store_16(bytes, 14, telemetry.boot_count);
+	little_endian_store_32(bytes, 16, telemetry.uptime_seconds);
 }
 
 static void system_state_queue_packet() {

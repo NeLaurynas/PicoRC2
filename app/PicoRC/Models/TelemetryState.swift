@@ -25,4 +25,5 @@ struct SystemTelemetryState: Equatable {
     var systemUsedKiB = 0
     var systemTotalKiB = 0
     var bootCount = 0
+    var uptimeSeconds = 0
 }

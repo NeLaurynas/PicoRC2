@@ -26,12 +26,27 @@ struct SystemView: View {
         fixedPointText(state.cpuTempCX100)
     }
 
+    private var uptimeText: String {
+        let total = max(state.uptimeSeconds, 0)
+        let seconds = total % 60
+        let minutes = (total / 60) % 60
+        let hours = total / 3600
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m \(seconds)s"
+        }
+        if minutes > 0 {
+            return "\(minutes)m \(seconds)s"
+        }
+        return "\(seconds)s"
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
                 CPUCard(fraction: cpuFraction, valueText: cpuText, clockText: cpuSpeedText)
 
-                MiscCard(tempText: cpuTempText, bootCount: state.bootCount)
+                MiscCard(tempText: cpuTempText, bootCount: state.bootCount, uptimeText: uptimeText)
 
                 MemoryCard(
                     title: "FREERTOS HEAP",
@@ -175,6 +190,7 @@ private struct StatusPill: View {
 private struct MiscCard: View {
     let tempText: String
     let bootCount: Int
+    let uptimeText: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -209,6 +225,29 @@ private struct MiscCard: View {
                     unit: "",
                     color: .hudGreen
                 )
+            }
+
+            Rectangle()
+                .fill(.white.opacity(0.10))
+                .frame(height: 1)
+
+            HStack(spacing: 7) {
+                Image(systemName: "clock")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.hudCyan)
+
+                Text("UPTIME")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Spacer(minLength: 8)
+
+                Text(uptimeText)
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .foregroundStyle(.hudCyan)
             }
         }
         .padding(.horizontal, 16)

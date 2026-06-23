@@ -70,16 +70,6 @@ struct StatusBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
-        .background(
-            ZStack {
-                Color.black.opacity(0.35)
-                LinearGradient(
-                    colors: [dotColor.opacity(0.10), .clear],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            }
-        )
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(

@@ -92,7 +92,8 @@ struct TelemetryPacketParser {
                 freeRTOSTotalKiB: unsigned16(bytes, at: 10),
                 systemUsedKiB: unsigned16(bytes, at: 12),
                 systemTotalKiB: unsigned16(bytes, at: 14),
-                bootCount: unsigned16(bytes, at: 16)
+                bootCount: unsigned16(bytes, at: 16),
+                uptimeSeconds: unsigned32(bytes, at: 18)
             )
         )
     }
@@ -113,6 +114,15 @@ struct TelemetryPacketParser {
 
     private func unsigned16(_ bytes: [UInt8], at offset: Int) -> Int {
         Int(UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8))
+    }
+
+    private func unsigned32(_ bytes: [UInt8], at offset: Int) -> Int {
+        Int(
+            UInt32(bytes[offset])
+                | (UInt32(bytes[offset + 1]) << 8)
+                | (UInt32(bytes[offset + 2]) << 16)
+                | (UInt32(bytes[offset + 3]) << 24)
+        )
     }
 
     private func signed16(_ bytes: [UInt8], at offset: Int) -> Int {

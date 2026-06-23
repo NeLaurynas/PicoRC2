@@ -32,6 +32,7 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
     private var isSettingsReadInFlight = false
     private var packetParser = TelemetryPacketParser()
     private var logBuffer = PicoRCLogBuffer()
+    private let liveActivity = LiveActivityController()
 
     override init() {
         super.init()
@@ -58,6 +59,7 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
             return
         }
 
+        liveActivity.end()
         self.peripheral = nil
         picoRCService = nil
         streamCharacteristic = nil
@@ -103,6 +105,7 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
             tankState = state
         case .systemState(let state):
             systemState = state
+            liveActivity.sync(systemState: state, status: status, isConnected: peripheral != nil)
         }
     }
 

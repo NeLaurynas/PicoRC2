@@ -17,8 +17,8 @@ enum PicoRCBluetoothProfile {
 
     static let tankStateVersion: UInt8 = 2
     static let tankStateLength = 5
-    static let systemStateVersion: UInt8 = 3
-    static let systemStateLength = 16
+    static let systemStateVersion: UInt8 = 4
+    static let systemStateLength = 20
     static let settingsVersion: UInt8 = 1
     static let settingsLength = 2
     static let settingsDebugLogsFlag: UInt8 = 0b0000_0001

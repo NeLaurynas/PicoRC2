@@ -33,6 +33,8 @@
 			isa = PBXGroup;
 			children = (
 				D78A73F52FE4BB5A00BC4C12 /* PicoRC */,
+				EE30000000000000000000C1 /* Shared */,
+				EE30000000000000000000C2 /* PicoRCWidget */,
 				D78A73F42FE4BB5A00BC4C12 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +43,7 @@
 			isa = PBXGroup;
 			children = (
 				D78A73F32FE4BB5A00BC4C12 /* PicoRC.app */,
+				EE10000000000000000000A2 /* PicoRCWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,10 +58,12 @@
 				D78A73EF2FE4BB5A00BC4C12 /* Sources */,
 				D78A73F02FE4BB5A00BC4C12 /* Frameworks */,
 				D78A73F12FE4BB5A00BC4C12 /* Resources */,
+				EE10000000000000000000A9 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				EE10000000000000000000AA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				D78A73F52FE4BB5A00BC4C12 /* PicoRC */,
@@ -83,6 +88,9 @@
 					D78A73F22FE4BB5A00BC4C12 = {
 						CreatedOnToolsVersion = 26.5;
 					};
+					EE10000000000000000000A1 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 				};
 			};
 			buildConfigurationList = D78A73EE2FE4BB5A00BC4C12 /* Build configuration list for PBXProject "PicoRC" */;
@@ -100,6 +108,7 @@
 			projectRoot = "";
 			targets = (
 				D78A73F22FE4BB5A00BC4C12 /* PicoRC */,
+				EE10000000000000000000A1 /* PicoRCWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -119,6 +128,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EE40000000000000000000D1 /* PicoRCLiveActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -247,6 +257,7 @@
 		D78A73FF2FE4BB5B00BC4C12 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -280,6 +291,7 @@
 		D78A74002FE4BB5B00BC4C12 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -332,6 +344,189 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin PBXBuildFile section (PicoRCWidget) */
+		EE40000000000000000000D1 /* PicoRCLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE20000000000000000000B1 /* PicoRCLiveActivityAttributes.swift */; };
+		EE40000000000000000000D2 /* PicoRCLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE20000000000000000000B1 /* PicoRCLiveActivityAttributes.swift */; };
+		EE40000000000000000000D3 /* PicoRCWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE20000000000000000000B2 /* PicoRCWidgetBundle.swift */; };
+		EE40000000000000000000D4 /* PicoRCWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EE10000000000000000000A2 /* PicoRCWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section (PicoRCWidget) */
+
+/* Begin PBXContainerItemProxy section (PicoRCWidget) */
+		EE10000000000000000000AB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D78A73EB2FE4BB5A00BC4C12 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EE10000000000000000000A1;
+			remoteInfo = PicoRCWidgetExtension;
+		};
+/* End PBXContainerItemProxy section (PicoRCWidget) */
+
+/* Begin PBXCopyFilesBuildPhase section (PicoRCWidget) */
+		EE10000000000000000000A9 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				EE40000000000000000000D4 /* PicoRCWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section (PicoRCWidget) */
+
+/* Begin PBXFileReference section (PicoRCWidget) */
+		EE10000000000000000000A2 /* PicoRCWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PicoRCWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE20000000000000000000B1 /* PicoRCLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PicoRCLiveActivityAttributes.swift; sourceTree = "<group>"; };
+		EE20000000000000000000B2 /* PicoRCWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PicoRCWidgetBundle.swift; sourceTree = "<group>"; };
+		EE20000000000000000000B3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section (PicoRCWidget) */
+
+/* Begin PBXFrameworksBuildPhase section (PicoRCWidget) */
+		EE10000000000000000000A7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section (PicoRCWidget) */
+
+/* Begin PBXGroup section (PicoRCWidget) */
+		EE30000000000000000000C1 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				EE20000000000000000000B1 /* PicoRCLiveActivityAttributes.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		EE30000000000000000000C2 /* PicoRCWidget */ = {
+			isa = PBXGroup;
+			children = (
+				EE20000000000000000000B2 /* PicoRCWidgetBundle.swift */,
+				EE20000000000000000000B3 /* Info.plist */,
+			);
+			path = PicoRCWidget;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section (PicoRCWidget) */
+
+/* Begin PBXNativeTarget section (PicoRCWidget) */
+		EE10000000000000000000A1 /* PicoRCWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EE10000000000000000000A3 /* Build configuration list for PBXNativeTarget "PicoRCWidgetExtension" */;
+			buildPhases = (
+				EE10000000000000000000A6 /* Sources */,
+				EE10000000000000000000A7 /* Frameworks */,
+				EE10000000000000000000A8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PicoRCWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = PicoRCWidgetExtension;
+			productReference = EE10000000000000000000A2 /* PicoRCWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section (PicoRCWidget) */
+
+/* Begin PBXResourcesBuildPhase section (PicoRCWidget) */
+		EE10000000000000000000A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section (PicoRCWidget) */
+
+/* Begin PBXSourcesBuildPhase section (PicoRCWidget) */
+		EE10000000000000000000A6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EE40000000000000000000D2 /* PicoRCLiveActivityAttributes.swift in Sources */,
+				EE40000000000000000000D3 /* PicoRCWidgetBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section (PicoRCWidget) */
+
+/* Begin PBXTargetDependency section (PicoRCWidget) */
+		EE10000000000000000000AA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EE10000000000000000000A1 /* PicoRCWidgetExtension */;
+			targetProxy = EE10000000000000000000AB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section (PicoRCWidget) */
+
+/* Begin XCBuildConfiguration section (PicoRCWidget) */
+		EE10000000000000000000A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z93W2NC4GB;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PicoRCWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PicoRC;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "gorgut.eu.PicoRC.PicoRCWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EE10000000000000000000A5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z93W2NC4GB;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PicoRCWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PicoRC;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "gorgut.eu.PicoRC.PicoRCWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section (PicoRCWidget) */
+
+/* Begin XCConfigurationList section (PicoRCWidget) */
+		EE10000000000000000000A3 /* Build configuration list for PBXNativeTarget "PicoRCWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EE10000000000000000000A4 /* Debug */,
+				EE10000000000000000000A5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section (PicoRCWidget) */
 	};
 	rootObject = D78A73EB2FE4BB5A00BC4C12 /* Project object */;
 }

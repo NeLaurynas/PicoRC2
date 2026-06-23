@@ -3,6 +3,7 @@
 
 #include <FreeRTOS.h>
 #include <frtos.h>
+#include <pico/time.h>
 #include <shared_modules/cpu_cores/cpu_cores.h>
 #include <shared_modules/memory/memory.h>
 #include <stddef.h>
@@ -95,6 +96,8 @@ void task_system_monitor(void *task_parameter) {
 		const auto freertos_total_bytes = (size_t)configTOTAL_HEAP_SIZE;
 		const auto freertos_free_bytes = xPortGetFreeHeapSize();
 
+		const u32 uptime_seconds = to_ms_since_boot(get_absolute_time()) / 1000U;
+
 		const system_telemetry_t telemetry = {
 			.cpu_x10 = cpu_x10,
 			.cpu_speed_mhz_x100 = cpu_speed_mhz_x100,
@@ -104,6 +107,7 @@ void task_system_monitor(void *task_parameter) {
 			.system_used_kib = system_used_kib,
 			.system_total_kib = system_total_kib,
 			.boot_count = state.app_data.boot_count,
+			.uptime_seconds = uptime_seconds,
 		};
 		state_system_telemetry_sync_store(&telemetry);
 
