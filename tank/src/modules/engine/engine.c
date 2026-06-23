@@ -20,7 +20,8 @@ typedef struct {
 typedef struct {
 	u8 positive_pin;
 	u8 negative_pin;
-	u16 *cc;
+	u8 slice;
+	u8 channel;
 } pwm_motor_t;
 
 static constexpr u8 no_pin = 0b11111111;
@@ -60,7 +61,7 @@ static pwm_gpio_t init_pwm(const u8 pin, const u16 top, const float clk_div) {
 static void set_motor(const pwm_motor_t *const motor, const i32 val, const u16 pwm) {
 	if (motor->positive_pin != no_pin) gpio_put(motor->positive_pin, val > 0);
 	if (motor->negative_pin != no_pin) gpio_put(motor->negative_pin, val < 0);
-	*motor->cc = pwm;
+	pwm_set_chan_level(motor->slice, motor->channel, pwm);
 }
 
 static i8 command_value(const i32 val, const i32 deadzone, const i32 max_val) {
@@ -113,8 +114,10 @@ void main_engine_init() {
 	const auto pwm2 = init_pwm(MOD_ENGINE_MAIN_PWM2, main_pwm_top, clk_div);
 	sleep_ms(1);
 
-	main_left.cc = utils_pwm_cc_for_16bit(pwm1.slice, pwm1.channel);
-	main_right.cc = utils_pwm_cc_for_16bit(pwm2.slice, pwm2.channel);
+	main_left.slice = pwm1.slice;
+	main_left.channel = pwm1.channel;
+	main_right.slice = pwm2.slice;
+	main_right.channel = pwm2.channel;
 	sleep_ms(1);
 }
 
@@ -199,7 +202,8 @@ void turret_ctrl_init() {
 	const auto pwm1 = init_pwm(MOD_TURRET_CTRL_PWM1, turret_pwm_top, 20.f); // 3.f for 5 khz frequency (2.f for 7.5 khz 1.f for 15 khz)
 	sleep_ms(1);
 
-	turret_rotate.cc = utils_pwm_cc_for_16bit(pwm1.slice, pwm1.channel);
+	turret_rotate.slice = pwm1.slice;
+	turret_rotate.channel = pwm1.channel;
 	sleep_ms(1);
 }
 
