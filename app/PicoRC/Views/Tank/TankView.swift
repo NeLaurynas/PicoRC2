@@ -27,6 +27,7 @@ struct TankView: View {
             .frame(maxWidth: .infinity)
         }
         .scrollContentBackground(.hidden)
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         .background(Color.clear)
     }
 }
