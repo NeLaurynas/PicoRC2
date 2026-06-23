@@ -28,6 +28,7 @@ enum PicoRCBluetoothProfile {
         case tankStateFull = 1
         case tankStateDiff = 2
         case systemState = 3
+        case systemStateDiff = 4
     }
 
     static func isPicoRCAdvertisement(_ advertisementData: [String: Any]) -> Bool {

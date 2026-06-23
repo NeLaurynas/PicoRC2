@@ -10,6 +10,7 @@ typedef enum {
 	APP_BT_PACKET_TANK_STATE_FULL = 1,
 	APP_BT_PACKET_TANK_STATE_DIFF = 2,
 	APP_BT_PACKET_SYSTEM_STATE = 3,
+	APP_BT_PACKET_SYSTEM_STATE_DIFF = 4,
 } app_bt_packet_type_t;
 
 void app_bt_start();

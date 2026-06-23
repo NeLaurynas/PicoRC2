@@ -30,8 +30,11 @@
 #define APP_SETTINGS_LEN 2
 #define APP_SETTINGS_DEBUG_LOGS_FLAG 0b00000001
 #define TANK_STATE_PERIOD_MS 50
-#define TANK_STATE_FULL_INTERVAL 10
+#define TELEMETRY_FULL_INTERVAL_MS 30'000
+#define TANK_STATE_FULL_INTERVAL (TELEMETRY_FULL_INTERVAL_MS / TANK_STATE_PERIOD_MS)
 #define SYSTEM_STATE_INTERVAL 10
+#define SYSTEM_STATE_FULL_INTERVAL (TELEMETRY_FULL_INTERVAL_MS / (TANK_STATE_PERIOD_MS * SYSTEM_STATE_INTERVAL))
+#define SYSTEM_STATE_FIELD_COUNT 9
 
 typedef struct {
 	u8 data[NOTIFICATION_MTU];
@@ -60,9 +63,24 @@ static btstack_timer_source_t tank_state_timer;
 static bool tank_state_timer_active;
 static u8 tank_state_previous[TANK_STATE_LEN];
 static bool tank_state_previous_valid;
-static u8 tank_state_tick;
+static u16 tank_state_tick;
+static u8 system_state_previous[SYSTEM_STATE_LEN];
+static bool system_state_previous_valid;
 static u8 system_state_tick;
+static u8 system_state_full_tick;
 static att_service_handler_t picorc_service_handler;
+
+static const u8 system_state_field_lens[SYSTEM_STATE_FIELD_COUNT] = {
+	2,
+	2,
+	2,
+	2,
+	2,
+	2,
+	2,
+	2,
+	4,
+};
 
 static void app_settings_build_current(u8 bytes[APP_SETTINGS_LEN]) {
 	bytes[0] = APP_SETTINGS_VERSION;
@@ -97,19 +115,25 @@ static bool push_versioned_packet(const app_bt_packet_type_t type, const u8 vers
 	return notification_queue_push_packet(packet, (u8)(payload_len + 2));
 }
 
+static void telemetry_stream_reset() {
+	tank_state_previous_valid = false;
+	system_state_previous_valid = false;
+	tank_state_tick = 0;
+	system_state_tick = 0;
+	system_state_full_tick = 0;
+}
+
 static void notification_disable(const bool clear_connection, const bool reset_state, const bool reset_mtu) {
 	if (clear_connection) notification_connection_handle = HCI_CON_HANDLE_INVALID;
 	notification_enabled = false;
 	if (reset_state) {
 		tank_state_timer_active = false;
-		tank_state_previous_valid = false;
-		tank_state_tick = 0;
-		system_state_tick = 0;
 		atomic_store_explicit(&notification_send_request_pending, false, memory_order_release);
 	} else if (tank_state_timer_active) {
 		(void)btstack_run_loop_remove_timer(&tank_state_timer);
 		tank_state_timer_active = false;
 	}
+	telemetry_stream_reset();
 	if (reset_state || reset_mtu) atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
 	atomic_store_explicit(&notification_client_subscribed, false, memory_order_release);
 	atomic_store_explicit(&notification_notify_request_pending, false, memory_order_release);
@@ -170,10 +194,9 @@ static void tank_state_queue_tick_packet() {
 	u8 bytes[TANK_STATE_LEN];
 	tank_state_build_current(bytes);
 
-	tank_state_tick++;
+	if (tank_state_tick < TANK_STATE_FULL_INTERVAL) tank_state_tick++;
 	if (tank_state_tick >= TANK_STATE_FULL_INTERVAL) {
-		tank_state_tick = 0;
-		(void)tank_state_queue_full(bytes);
+		if (tank_state_queue_full(bytes)) tank_state_tick = 0;
 		return;
 	}
 
@@ -181,6 +204,7 @@ static void tank_state_queue_tick_packet() {
 	for (u8 i = 0; i < TANK_STATE_LEN; i++) {
 		if (tank_state_previous[i] != bytes[i]) changed_mask |= (u8)(1u << i);
 	}
+	if (changed_mask == 0) return;
 
 	if (!tank_state_queue_diff(bytes, changed_mask)) return;
 
@@ -202,11 +226,55 @@ static void system_state_build_current(u8 bytes[SYSTEM_STATE_LEN]) {
 	little_endian_store_32(bytes, 16, telemetry.uptime_seconds);
 }
 
-static void system_state_queue_packet() {
+static void system_state_remember(const u8 bytes[SYSTEM_STATE_LEN]) {
+	memcpy(system_state_previous, bytes, sizeof system_state_previous);
+	system_state_previous_valid = true;
+}
+
+static bool system_state_queue_full(const u8 bytes[SYSTEM_STATE_LEN]) {
+	if (!push_versioned_packet(APP_BT_PACKET_SYSTEM_STATE, SYSTEM_STATE_VERSION, bytes, SYSTEM_STATE_LEN)) return false;
+
+	system_state_remember(bytes);
+	return true;
+}
+
+static void system_state_queue_full_snapshot() {
 	u8 bytes[SYSTEM_STATE_LEN];
 	system_state_build_current(bytes);
 
-	(void)push_versioned_packet(APP_BT_PACKET_SYSTEM_STATE, SYSTEM_STATE_VERSION, bytes, SYSTEM_STATE_LEN);
+	if (!system_state_queue_full(bytes)) return;
+	system_state_tick = 0;
+	system_state_full_tick = 0;
+}
+
+static u16 system_state_changed_mask(const u8 bytes[SYSTEM_STATE_LEN]) {
+	u16 changed_mask = 0;
+	u8 offset = 0;
+	for (u8 i = 0; i < SYSTEM_STATE_FIELD_COUNT; i++) {
+		const u8 len = system_state_field_lens[i];
+		if (memcmp(system_state_previous + offset, bytes + offset, len) != 0) changed_mask |= (u16)(1u << i);
+		offset += len;
+	}
+
+	return changed_mask;
+}
+
+static bool system_state_queue_diff(const u8 bytes[SYSTEM_STATE_LEN], const u16 changed_mask) {
+	u8 payload[SYSTEM_STATE_LEN + sizeof changed_mask];
+	u8 payload_len = sizeof changed_mask;
+	little_endian_store_16(payload, 0, changed_mask);
+
+	u8 offset = 0;
+	for (u8 i = 0; i < SYSTEM_STATE_FIELD_COUNT; i++) {
+		const u8 len = system_state_field_lens[i];
+		if ((changed_mask & (u16)(1u << i)) != 0) {
+			memcpy(payload + payload_len, bytes + offset, len);
+			payload_len += len;
+		}
+		offset += len;
+	}
+
+	return push_versioned_packet(APP_BT_PACKET_SYSTEM_STATE_DIFF, SYSTEM_STATE_VERSION, payload, payload_len);
 }
 
 static void system_state_queue_tick_packet() {
@@ -214,7 +282,26 @@ static void system_state_queue_tick_packet() {
 	if (system_state_tick < SYSTEM_STATE_INTERVAL) return;
 
 	system_state_tick = 0;
-	system_state_queue_packet();
+	if (!system_state_previous_valid) {
+		system_state_queue_full_snapshot();
+		return;
+	}
+
+	u8 bytes[SYSTEM_STATE_LEN];
+	system_state_build_current(bytes);
+
+	if (system_state_full_tick < SYSTEM_STATE_FULL_INTERVAL) system_state_full_tick++;
+	if (system_state_full_tick >= SYSTEM_STATE_FULL_INTERVAL) {
+		if (system_state_queue_full(bytes)) system_state_full_tick = 0;
+		return;
+	}
+
+	const u16 changed_mask = system_state_changed_mask(bytes);
+	if (changed_mask == 0) return;
+
+	if (!system_state_queue_diff(bytes, changed_mask)) return;
+
+	system_state_remember(bytes);
 }
 
 static void request_notification_send_from_main() {
@@ -343,8 +430,7 @@ static int app_bt_att_write_callback(
 
 			if (notification_enabled) {
 				tank_state_queue_full_snapshot();
-				system_state_queue_packet();
-				system_state_tick = 0;
+				system_state_queue_full_snapshot();
 				tank_state_timer_start();
 				request_notification_send_from_main();
 			} else {

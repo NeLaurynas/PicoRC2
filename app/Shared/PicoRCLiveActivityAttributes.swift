@@ -26,6 +26,10 @@ extension PicoRCLiveActivityAttributes.ContentState {
         "\(Int((Double(cpuX10) / 10.0).rounded()))%"
     }
 
+    var cpuPercentValue: Double {
+        Double(cpuX10) / 10.0
+    }
+
     var cpuFraction: Double {
         min(max(Double(cpuX10) / 1000.0, 0), 1)
     }
@@ -37,5 +41,9 @@ extension PicoRCLiveActivityAttributes.ContentState {
         let fraction = absolute % 100
 
         return "\(sign)\(absolute / 100).\(fraction < 10 ? "0" : "")\(fraction)"
+    }
+
+    var cpuSpeedValue: Double {
+        Double(cpuSpeedMHzX100) / 100.0
     }
 }

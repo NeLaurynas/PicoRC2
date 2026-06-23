@@ -85,6 +85,7 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
         didRetrySettingsDiscovery = false
         isSettingsDiscoveryInFlight = false
         isSettingsReadInFlight = false
+        packetParser.reset()
     }
 
     private func shouldIgnore(_ peripheral: CBPeripheral) -> Bool {
@@ -359,6 +360,7 @@ extension BluetoothStreamModel: CBPeripheralDelegate {
             return
         }
 
+        packetParser.reset()
         if characteristic.isNotifying {
             updateConnectedStatusIfIdle()
         } else {

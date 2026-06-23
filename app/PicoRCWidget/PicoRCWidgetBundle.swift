@@ -54,6 +54,7 @@ struct PicoRCLiveActivity: Widget {
                         Text(state.cpuPercentText)
                             .font(.system(size: 22, weight: .bold, design: .monospaced))
                             .foregroundStyle(color)
+                            .contentTransition(.numericText(value: state.cpuPercentValue))
 
                         Text("%")
                             .font(.system(size: 12, weight: .heavy, design: .monospaced))
@@ -88,10 +89,12 @@ struct PicoRCLiveActivity: Widget {
                 Text(state.cpuPercentCompact)
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .foregroundStyle(color)
+                    .contentTransition(.numericText(value: state.cpuPercentValue))
             } minimal: {
                 Text(state.cpuPercentCompact)
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(color)
+                    .contentTransition(.numericText(value: state.cpuPercentValue))
             }
             .keylineTint(color)
         }
@@ -130,6 +133,7 @@ private struct LiveActivityLockScreenView: View {
                     Text(state.cpuPercentText)
                         .font(.system(size: 40, weight: .bold, design: .monospaced))
                         .foregroundStyle(color)
+                        .contentTransition(.numericText(value: state.cpuPercentValue))
 
                     Text("%")
                         .font(.system(size: 20, weight: .heavy, design: .monospaced))
@@ -146,6 +150,7 @@ private struct LiveActivityLockScreenView: View {
                     Text("\(state.cpuSpeedText) MHz")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(.cyan)
+                        .contentTransition(.numericText(value: state.cpuSpeedValue))
                 }
             }
 

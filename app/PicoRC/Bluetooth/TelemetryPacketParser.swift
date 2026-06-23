@@ -14,7 +14,18 @@ enum TelemetryPacket {
 }
 
 struct TelemetryPacketParser {
+    private static let tankStateKnownMask: UInt8 = 0b0001_1111
+    private static let systemStateKnownMask: UInt16 = 0b0000_0001_1111_1111
+    private static let systemStateFieldLengths = [2, 2, 2, 2, 2, 2, 2, 2, 4]
+
     private var tankStateBytes = Array(repeating: UInt8(0), count: PicoRCBluetoothProfile.tankStateLength)
+    private var systemStateBytes = Array(repeating: UInt8(0), count: PicoRCBluetoothProfile.systemStateLength)
+    private var isTankStateValid = false
+    private var isSystemStateValid = false
+
+    mutating func reset() {
+        self = Self()
+    }
 
     mutating func parse(_ data: Data) -> TelemetryPacket? {
         let bytes = [UInt8](data)
@@ -31,6 +42,8 @@ struct TelemetryPacketParser {
             return tankStateDiffPacket(bytes)
         case .systemState:
             return systemStatePacket(bytes)
+        case .systemStateDiff:
+            return systemStateDiffPacket(bytes)
         }
     }
 
@@ -49,15 +62,23 @@ struct TelemetryPacketParser {
         }
 
         tankStateBytes = Array(bytes[2..<(PicoRCBluetoothProfile.tankStateLength + 2)])
+        isTankStateValid = true
         return .tankState(tankState)
     }
 
     private mutating func tankStateDiffPacket(_ bytes: [UInt8]) -> TelemetryPacket? {
-        guard bytes.count >= 3, bytes[1] == PicoRCBluetoothProfile.tankStateVersion else {
+        guard isTankStateValid,
+              bytes.count >= 3,
+              bytes[1] == PicoRCBluetoothProfile.tankStateVersion else {
             return nil
         }
 
         let changedMask = bytes[2]
+        guard (changedMask & ~Self.tankStateKnownMask) == 0 else {
+            return nil
+        }
+
+        var nextBytes = tankStateBytes
         var byteIndex = 3
         for stateIndex in 0..<PicoRCBluetoothProfile.tankStateLength {
             guard (changedMask & UInt8(1 << stateIndex)) != 0 else {
@@ -67,35 +88,61 @@ struct TelemetryPacketParser {
                 return nil
             }
 
-            tankStateBytes[stateIndex] = bytes[byteIndex]
+            nextBytes[stateIndex] = bytes[byteIndex]
             byteIndex += 1
         }
         guard byteIndex == bytes.count else {
             return nil
         }
 
+        tankStateBytes = nextBytes
         return .tankState(tankState)
     }
 
-    private func systemStatePacket(_ bytes: [UInt8]) -> TelemetryPacket? {
+    private mutating func systemStatePacket(_ bytes: [UInt8]) -> TelemetryPacket? {
         guard bytes.count == PicoRCBluetoothProfile.systemStateLength + 2,
               bytes[1] == PicoRCBluetoothProfile.systemStateVersion else {
             return nil
         }
 
-        return .systemState(
-            SystemTelemetryState(
-                cpuX10: unsigned16(bytes, at: 2),
-                cpuSpeedMHzX100: unsigned16(bytes, at: 4),
-                cpuTempCX100: signed16(bytes, at: 6),
-                freeRTOSUsedKiB: unsigned16(bytes, at: 8),
-                freeRTOSTotalKiB: unsigned16(bytes, at: 10),
-                systemUsedKiB: unsigned16(bytes, at: 12),
-                systemTotalKiB: unsigned16(bytes, at: 14),
-                bootCount: unsigned16(bytes, at: 16),
-                uptimeSeconds: unsigned32(bytes, at: 18)
-            )
-        )
+        systemStateBytes = Array(bytes[2..<(PicoRCBluetoothProfile.systemStateLength + 2)])
+        isSystemStateValid = true
+        return .systemState(systemState)
+    }
+
+    private mutating func systemStateDiffPacket(_ bytes: [UInt8]) -> TelemetryPacket? {
+        guard isSystemStateValid,
+              bytes.count >= 4,
+              bytes[1] == PicoRCBluetoothProfile.systemStateVersion else {
+            return nil
+        }
+
+        let changedMask = UInt16(bytes[2]) | (UInt16(bytes[3]) << 8)
+        guard (changedMask & ~Self.systemStateKnownMask) == 0 else {
+            return nil
+        }
+
+        var nextBytes = systemStateBytes
+        var byteIndex = 4
+        var stateOffset = 0
+        for (stateIndex, fieldLength) in Self.systemStateFieldLengths.enumerated() {
+            if (changedMask & (UInt16(1) << stateIndex)) != 0 {
+                guard byteIndex + fieldLength <= bytes.count else {
+                    return nil
+                }
+
+                nextBytes.replaceSubrange(stateOffset..<(stateOffset + fieldLength), with: bytes[byteIndex..<(byteIndex + fieldLength)])
+                byteIndex += fieldLength
+            }
+
+            stateOffset += fieldLength
+        }
+        guard byteIndex == bytes.count else {
+            return nil
+        }
+
+        systemStateBytes = nextBytes
+        return .systemState(systemState)
     }
 
     private var tankState: TankTelemetryState {
@@ -109,6 +156,20 @@ struct TelemetryPacketParser {
             mainRight: signedValue(tankStateBytes[2]),
             turretRotate: signedValue(tankStateBytes[3]),
             turretLift: signedValue(tankStateBytes[4])
+        )
+    }
+
+    private var systemState: SystemTelemetryState {
+        SystemTelemetryState(
+            cpuX10: unsigned16(systemStateBytes, at: 0),
+            cpuSpeedMHzX100: unsigned16(systemStateBytes, at: 2),
+            cpuTempCX100: signed16(systemStateBytes, at: 4),
+            freeRTOSUsedKiB: unsigned16(systemStateBytes, at: 6),
+            freeRTOSTotalKiB: unsigned16(systemStateBytes, at: 8),
+            systemUsedKiB: unsigned16(systemStateBytes, at: 10),
+            systemTotalKiB: unsigned16(systemStateBytes, at: 12),
+            bootCount: unsigned16(systemStateBytes, at: 14),
+            uptimeSeconds: unsigned32(systemStateBytes, at: 16)
         )
     }
 
