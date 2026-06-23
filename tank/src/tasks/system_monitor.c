@@ -17,6 +17,7 @@
 
 #define BYTES_IN_KIB 1024U
 #define PICO2_SRAM_KIB 520U
+#define CPU_TEMP_EMA_ALPHA 0.10f
 #define CPU_SAMPLE_TICKS MS_TO_TICKS(100)
 #define SYSTEM_MEMORY_SAMPLE_TICKS MS_TO_TICKS(10'000)
 
@@ -71,7 +72,9 @@ void task_system_monitor(void *task_parameter) {
 	TickType_t system_memory_last_sample = start - SYSTEM_MEMORY_SAMPLE_TICKS;
 	u16 cpu_x10 = 0;
 	u16 cpu_speed_mhz_x100 = 0;
+	float cpu_temp_c = 0.0f;
 	i16 cpu_temp_c_x100 = 0;
+	bool cpu_temp_valid = false;
 	u16 system_used_kib = 0;
 
 	while (true) {
@@ -85,7 +88,14 @@ void task_system_monitor(void *task_parameter) {
 			(void)frtos_cpu_usage_percent(&cpu_usage);
 			cpu_x10 = cpu_percent_to_x10(cpu_usage);
 			cpu_speed_mhz_x100 = cpu_mhz_to_x100(cpu_speed(false));
-			cpu_temp_c_x100 = cpu_temp_to_x100(cpu_temp(false));
+			const auto raw_temp_c = cpu_temp(false);
+			if (!cpu_temp_valid) {
+				cpu_temp_c = raw_temp_c;
+				cpu_temp_valid = true;
+			} else {
+				cpu_temp_c += (raw_temp_c - cpu_temp_c) * CPU_TEMP_EMA_ALPHA;
+			}
+			cpu_temp_c_x100 = cpu_temp_to_x100(cpu_temp_c);
 		}
 
 		if (interval_elapsed(ticks, &system_memory_last_sample, SYSTEM_MEMORY_SAMPLE_TICKS)) {
