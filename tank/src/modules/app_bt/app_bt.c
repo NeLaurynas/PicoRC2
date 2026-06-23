@@ -351,7 +351,7 @@ static int app_bt_att_write_callback(
 
 			app_settings_t candidate = state.app_settings;
 			candidate.debug_logs = debug_logs;
-			if (!app_settings_save(&candidate)) return ATT_ERROR_UNLIKELY_ERROR;
+			if (!app_settings_save_deferred(&candidate)) return ATT_ERROR_UNLIKELY_ERROR;
 
 			state.app_settings = candidate;
 			return ATT_ERROR_SUCCESS;

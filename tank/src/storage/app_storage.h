@@ -9,10 +9,16 @@
 bool app_storage_init();
 
 [[nodiscard]]
+bool app_storage_deferred_init();
+
+[[nodiscard]]
 bool app_settings_load(app_settings_t *out);
 
 [[nodiscard]]
 bool app_settings_save(const app_settings_t *settings);
+
+[[nodiscard]]
+bool app_settings_save_deferred(const app_settings_t *settings);
 
 [[nodiscard]]
 bool app_data_load(app_data_t *out);

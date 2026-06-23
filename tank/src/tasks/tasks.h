@@ -67,6 +67,12 @@ void task_heartbeat(void *task_parameter);
 [[noreturn]]
 void task_system_monitor(void *task_parameter);
 
+#define TASK_STORAGE_STACK_DEPTH TASK_STACK_384
+#define TASK_STORAGE_PRIORITY TASK_PRIO_1_LOWEST
+#define TASK_STORAGE_TICKS SECONDS_TO_TICKS(1)
+[[noreturn]]
+void task_storage(void *task_parameter);
+
 #define TASK_STARTUP_STACK_DEPTH TASK_STACK_384
 #define TASK_STARTUP_PRIORITY TASK_PRIO_6_REALTIME
 #define TASK_STARTUP_TICKS SECONDS_TO_TICKS(1)

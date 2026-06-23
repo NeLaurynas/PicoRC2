@@ -86,6 +86,7 @@ typedef struct {
 		task_t startup;
 		task_t heartbeat;
 		task_t system_monitor;
+		task_t storage;
 		task_t control_input;
 		task_t control_actuation;
 		task_t shutdown;

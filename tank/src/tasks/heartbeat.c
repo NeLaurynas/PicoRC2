@@ -65,6 +65,7 @@ void task_heartbeat(void *task_parameter) {
 		&state.tasks.heartbeat,
 		&state.tasks.startup,
 		&state.tasks.system_monitor,
+		&state.tasks.storage,
 		&state.tasks.control_input,
 		&state.tasks.control_actuation,
 	};

@@ -105,10 +105,25 @@ target_include_directories(bluepad32 PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_compile_definitions(bluepad32 PRIVATE
+		CYW43_LWIP=0
+		CYW43_LWIP_DEFAULT=0
 		PICO_FLASH_SIZE_BYTES=${FLASH_TOTAL_BYTES}
 		PICO_FLASH_BANK_TOTAL_SIZE=${BTSTACK_FLASH_BANK_TOTAL_SIZE}
 		PICO_FLASH_BANK_STORAGE_OFFSET=${BTSTACK_FLASH_BANK_OFFSET}
 )
+foreach (BLUEPAD32_LINK_PROPERTY LINK_LIBRARIES INTERFACE_LINK_LIBRARIES)
+	get_target_property(BLUEPAD32_LINK_LIBRARIES bluepad32 ${BLUEPAD32_LINK_PROPERTY})
+	if (BLUEPAD32_LINK_LIBRARIES)
+		list(REMOVE_ITEM
+				BLUEPAD32_LINK_LIBRARIES
+				pico_cyw43_arch_none
+				pico_btstack_cyw43
+				"$<LINK_ONLY:pico_cyw43_arch_none>"
+				"$<LINK_ONLY:pico_btstack_cyw43>"
+		)
+		set_target_properties(bluepad32 PROPERTIES ${BLUEPAD32_LINK_PROPERTY} "${BLUEPAD32_LINK_LIBRARIES}")
+	endif ()
+endforeach ()
 
 add_executable(${PROJECT_NAME}
 		FreeRTOSConfig.h
@@ -151,6 +166,10 @@ pico_set_program_name(${PROJECT_NAME} "${PROJECT_NAME}")
 pico_set_program_version(${PROJECT_NAME} "0.1.0")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+		NO_SYS=0
+		CYW43_LWIP=0
+		CYW43_LWIP_DEFAULT=0
+		CYW43_TASK_STACK_SIZE=1024
 		PICO_FLASH_SIZE_BYTES=${FLASH_TOTAL_BYTES}
 		MOD_STORAGE_SECTORS=${MOD_STORAGE_SECTORS}
 		MOD_STORAGE_SECTOR_SIZE=${MOD_STORAGE_SECTOR_SIZE}
@@ -242,7 +261,7 @@ target_link_libraries(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
 		bluepad32
-		pico_cyw43_arch_none
+		pico_cyw43_arch_sys_freertos
 		pico_btstack_ble
 		pico_btstack_classic
 		pico_btstack_cyw43

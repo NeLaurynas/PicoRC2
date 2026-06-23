@@ -3,7 +3,10 @@
 
 #include "storage/app_storage.h"
 
+#include <FreeRTOS.h>
+#include <queue.h>
 #include <string.h>
+#include <task.h>
 #include <utils.h>
 
 #include "storage/app_lfs.h"
@@ -30,6 +33,7 @@ typedef struct __attribute__((packed)) {
 } blob_header_t;
 
 static bool initialized = false;
+static QueueHandle_t app_settings_save_queue = nullptr;
 
 static void default_settings(app_settings_t *settings) {
 	memset(settings, 0, sizeof *settings);
@@ -81,6 +85,19 @@ bool app_settings_save(const app_settings_t *settings) {
 	return write_file(APP_FS_SETTINGS_PATH, APP_SETTINGS_MAGIC, APP_SETTINGS_SCHEMA, settings, sizeof *settings);
 }
 
+bool app_storage_deferred_init() {
+	if (app_settings_save_queue != nullptr) return true;
+
+	app_settings_save_queue = xQueueCreate(1, sizeof(app_settings_t));
+	return app_settings_save_queue != nullptr;
+}
+
+bool app_settings_save_deferred(const app_settings_t *settings) {
+	if (settings == nullptr || app_settings_save_queue == nullptr) return false;
+
+	return xQueueOverwrite(app_settings_save_queue, settings) == pdPASS;
+}
+
 bool app_data_load(app_data_t *out) {
 	return read_file(APP_FS_DATA_PATH, APP_DATA_MAGIC, APP_DATA_SCHEMA, out, sizeof *out);
 }
@@ -108,4 +125,23 @@ bool app_storage_init() {
 
 	initialized = true;
 	return true;
+}
+
+[[noreturn]]
+void task_storage(void *task_parameter) {
+	(void)task_parameter;
+	configASSERT(app_settings_save_queue != nullptr);
+
+	while (true) {
+		app_settings_t settings;
+		const auto received = xQueueReceive(app_settings_save_queue, &settings, portMAX_DELAY);
+		configASSERT(received == pdTRUE);
+
+		if (!app_settings_save(&settings)) {
+			utils_printf("app_settings_save failed\n");
+		}
+
+		const auto stack_watermark = uxTaskGetStackHighWaterMark(nullptr);
+		state.tasks.storage.stack_used = state.tasks.storage.stack_depth - stack_watermark;
+	}
 }

@@ -30,6 +30,10 @@ void task_startup(void *task_parameter) {
 	if (!app_storage_init()) {
 		utils_error_mode(21);
 	}
+	if (!app_storage_deferred_init()) {
+		utils_error_mode(22);
+	}
+	tasks_create(&state.tasks.storage);
 
 	control_input_init();
 	control_actuation_init();

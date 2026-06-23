@@ -35,6 +35,13 @@ state_t state = {
 			.ticks = TASK_SYSTEM_MONITOR_TICKS,
 			.function = task_system_monitor,
 		},
+		.storage = {
+			.name = "storage",
+			.stack_depth = TASK_STORAGE_STACK_DEPTH,
+			.priority = TASK_STORAGE_PRIORITY,
+			.ticks = TASK_STORAGE_TICKS,
+			.function = task_storage,
+		},
 		.control_input = {
 			.name = "control_input",
 			.stack_depth = TASK_CONTROL_INPUT_STACK_DEPTH,
