@@ -61,13 +61,13 @@ void tasks_delay(task_t *task);
 [[noreturn]]
 void task_heartbeat(void *task_parameter);
 
-#define TASK_SYSTEM_MONITOR_STACK_DEPTH TASK_STACK_256
+#define TASK_SYSTEM_MONITOR_STACK_DEPTH TASK_STACK_640
 #define TASK_SYSTEM_MONITOR_PRIORITY TASK_PRIO_2_LOWER
 #define TASK_SYSTEM_MONITOR_TICKS MS_TO_TICKS(500)
 [[noreturn]]
 void task_system_monitor(void *task_parameter);
 
-#define TASK_STARTUP_STACK_DEPTH TASK_STACK_512
+#define TASK_STARTUP_STACK_DEPTH TASK_STACK_384
 #define TASK_STARTUP_PRIORITY TASK_PRIO_6_REALTIME
 #define TASK_STARTUP_TICKS SECONDS_TO_TICKS(1)
 [[noreturn]]
@@ -79,13 +79,13 @@ void task_startup(void *task_parameter);
 [[noreturn]]
 void task_control_input(void *task_parameter);
 
-#define TASK_CONTROL_ACTUATION_STACK_DEPTH TASK_STACK_640
+#define TASK_CONTROL_ACTUATION_STACK_DEPTH TASK_STACK_768
 #define TASK_CONTROL_ACTUATION_PRIORITY TASK_PRIO_4_HIGHER
 #define TASK_CONTROL_ACTUATION_TICKS SECONDS_TO_TICKS(1)
 [[noreturn]]
 void task_control_actuation(void *task_parameter);
 
-#define TASK_SHUTDOWN_STACK_DEPTH TASK_STACK_512
+#define TASK_SHUTDOWN_STACK_DEPTH TASK_STACK_1024
 #define TASK_SHUTDOWN_PRIORITY TASK_PRIO_5_HIGHEST
 #define TASK_SHUTDOWN_TICKS SECONDS_TO_TICKS(6)
 [[noreturn]]
