@@ -72,7 +72,7 @@ void task_heartbeat(void *task_parameter) {
 
 	while (true) {
 		update_tasks(tasks, ARRAY_SIZE(tasks));
-		print_tasks(tasks, ARRAY_SIZE(tasks));
+		if (state.app_settings.debug_logs) print_tasks(tasks, ARRAY_SIZE(tasks));
 
 		tasks_delay(&state.tasks.heartbeat);
 	}
