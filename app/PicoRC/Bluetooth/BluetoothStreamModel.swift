@@ -8,6 +8,7 @@
 import Combine
 import CoreBluetooth
 import Foundation
+import UIKit
 
 final class BluetoothStreamModel: NSObject, ObservableObject {
     @Published private(set) var log = ""
@@ -37,6 +38,20 @@ final class BluetoothStreamModel: NSObject, ObservableObject {
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: .main)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillTerminate),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func appWillTerminate() {
+        liveActivity.end()
     }
 
     private func scanIfPossible() {

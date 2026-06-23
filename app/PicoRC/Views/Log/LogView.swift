@@ -56,19 +56,31 @@ struct LogView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    HStack(alignment: .top, spacing: 0) {
-                        Text(log.isEmpty ? "// waiting for telemetry stream…" : log)
-                            .font(.system(size: 13, weight: .regular, design: .monospaced))
-                            .textSelection(.enabled)
-                            .foregroundStyle(log.isEmpty ? .white.opacity(0.4) : .hudGreen)
+                    let isEmpty = log.isEmpty
+                    let text = isEmpty ? "// waiting for telemetry stream…" : log
+                    let lastNewline = text.lastIndex(of: "\n")
+                    let head = lastNewline.map { String(text[..<$0]) }
+                    let lastLine = lastNewline.map { String(text[text.index(after: $0)...]) } ?? text
 
-                        Text("▋")
-                            .font(.system(size: 13, weight: .regular, design: .monospaced))
-                            .foregroundStyle(.hudGreen)
-                            .opacity(cursorOn ? 1 : 0)
+                    VStack(alignment: .leading, spacing: 0) {
+                        if let head, !head.isEmpty {
+                            Text(head)
+                                .textSelection(.enabled)
+                        }
 
-                        Spacer(minLength: 0)
+                        HStack(alignment: .firstTextBaseline, spacing: 0) {
+                            Text(lastLine)
+                                .textSelection(.enabled)
+
+                            Text("▋")
+                                .foregroundStyle(.hudGreen)
+                                .opacity(cursorOn ? 1 : 0)
+
+                            Spacer(minLength: 0)
+                        }
                     }
+                    .font(.system(size: 13, weight: .regular, design: .monospaced))
+                    .foregroundStyle(isEmpty ? .white.opacity(0.4) : .hudGreen)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .padding(16)
                     .id("log-bottom")

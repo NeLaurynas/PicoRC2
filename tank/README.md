@@ -74,7 +74,7 @@ Stream packet types are defined in `src/modules/app_bt/app_bt.h`:
 - `APP_BT_PACKET_TANK_STATE_DIFF = 2`
 - `APP_BT_PACKET_SYSTEM_STATE = 3`
 
-Tank telemetry is sent every 50 ms. A full tank snapshot is sent when notifications start and then every 10 tank ticks; intermediate tank updates are diff packets. System telemetry is queued on the same timer.
+Tank telemetry is sent every 50 ms. A full tank snapshot is sent when notifications start and then every 10 tank ticks; intermediate tank updates are diff packets. System telemetry is sent when notifications start and then every 500 ms.
 
 Logs are routed through `utils_printf_sink` into BLE notifications when a client is subscribed.
 

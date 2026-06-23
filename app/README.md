@@ -50,7 +50,7 @@ Stream packets are typed by the first byte:
 - `0` - log text.
 - `1` - full tank state, version `2`, 5-byte payload.
 - `2` - tank state diff, version `2`.
-- `3` - system state, version `3`, 16-byte payload.
+- `3` - system state, version `4`, 20-byte payload.
 
 Settings are version `1`, length `2`, encoded as `[version, flags]`. Bit `0` of `flags` enables debug logs.
 

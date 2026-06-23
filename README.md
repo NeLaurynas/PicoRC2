@@ -68,4 +68,6 @@ Stream packet types:
 - `2` - tank telemetry diff.
 - `3` - system telemetry snapshot.
 
+Tank telemetry is sent every 50 ms. System telemetry is sent when notifications start and then every 500 ms.
+
 Settings payload version `1` is `[version, flags]`; flag bit `0` enables debug logs.

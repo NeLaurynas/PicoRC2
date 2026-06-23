@@ -31,6 +31,7 @@
 #define APP_SETTINGS_DEBUG_LOGS_FLAG 0b00000001
 #define TANK_STATE_PERIOD_MS 50
 #define TANK_STATE_FULL_INTERVAL 10
+#define SYSTEM_STATE_INTERVAL 10
 
 typedef struct {
 	u8 data[NOTIFICATION_MTU];
@@ -60,6 +61,7 @@ static bool tank_state_timer_active;
 static u8 tank_state_previous[TANK_STATE_LEN];
 static bool tank_state_previous_valid;
 static u8 tank_state_tick;
+static u8 system_state_tick;
 static att_service_handler_t picorc_service_handler;
 
 static void app_settings_build_current(u8 bytes[APP_SETTINGS_LEN]) {
@@ -102,6 +104,7 @@ static void notification_disable(const bool clear_connection, const bool reset_s
 		tank_state_timer_active = false;
 		tank_state_previous_valid = false;
 		tank_state_tick = 0;
+		system_state_tick = 0;
 		atomic_store_explicit(&notification_send_request_pending, false, memory_order_release);
 	} else if (tank_state_timer_active) {
 		(void)btstack_run_loop_remove_timer(&tank_state_timer);
@@ -206,6 +209,14 @@ static void system_state_queue_packet() {
 	(void)push_versioned_packet(APP_BT_PACKET_SYSTEM_STATE, SYSTEM_STATE_VERSION, bytes, SYSTEM_STATE_LEN);
 }
 
+static void system_state_queue_tick_packet() {
+	system_state_tick++;
+	if (system_state_tick < SYSTEM_STATE_INTERVAL) return;
+
+	system_state_tick = 0;
+	system_state_queue_packet();
+}
+
 static void request_notification_send_from_main() {
 	if (notification_connection_handle == HCI_CON_HANDLE_INVALID || !notification_enabled) {
 		notification_disable(notification_connection_handle == HCI_CON_HANDLE_INVALID, false, false);
@@ -276,7 +287,7 @@ static void tank_state_timer_callback(btstack_timer_source_t *timer) {
 	if (notification_connection_handle == HCI_CON_HANDLE_INVALID || !notification_enabled) return;
 
 	tank_state_queue_tick_packet();
-	system_state_queue_packet();
+	system_state_queue_tick_packet();
 	request_notification_send_from_main();
 	tank_state_timer_start();
 }
@@ -333,6 +344,7 @@ static int app_bt_att_write_callback(
 			if (notification_enabled) {
 				tank_state_queue_full_snapshot();
 				system_state_queue_packet();
+				system_state_tick = 0;
 				tank_state_timer_start();
 				request_notification_send_from_main();
 			} else {
