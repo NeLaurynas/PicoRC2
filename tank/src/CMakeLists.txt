@@ -162,7 +162,7 @@ add_executable(${PROJECT_NAME}
 		modules/leds/leds.h
 )
 
-pico_set_program_name(${PROJECT_NAME} "${PROJECT_NAME}")
+pico_set_program_name(${PROJECT_NAME} "PicoRC/Tank")
 pico_set_program_version(${PROJECT_NAME} "0.1.0")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

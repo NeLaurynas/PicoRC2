@@ -43,12 +43,16 @@ typedef struct {
 
 static const u8 picorc_adv_data[] = {
 	2, BLUETOOTH_DATA_TYPE_FLAGS, APP_BT_AD_FLAGS,
-	7, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'P', 'i', 'c', 'o', 'R', 'C',
 	17, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_128_BIT_SERVICE_CLASS_UUIDS,
 	0x43, 0x52, 0x4F, 0x43, 0x49, 0x50, 0x2C, 0x9F,
 	0x4B, 0x4E, 0x2D, 0x2E, 0x01, 0xC0, 0xA4, 0xF7,
 };
 static_assert(sizeof picorc_adv_data <= 31, "picorc_adv_data too big");
+
+static const u8 picorc_scan_response_data[] = {
+	12, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'P', 'i', 'c', 'o', 'R', 'C', '/', 'T', 'a', 'n', 'k',
+};
+static_assert(sizeof picorc_scan_response_data <= 31, "picorc_scan_response_data too big");
 
 static atomic_bool notification_client_subscribed;
 static atomic_bool notification_send_request_pending;
@@ -548,5 +552,6 @@ void app_bt_start() {
 	bd_addr_t null_addr = {0};
 	gap_advertisements_set_params(APP_BT_ADV_INTERVAL_MIN, APP_BT_ADV_INTERVAL_MAX, 0, 0, null_addr, APP_BT_ADV_CHANNEL_MAP, 0);
 	gap_advertisements_set_data((u8)sizeof picorc_adv_data, (u8 *)picorc_adv_data);
+	gap_scan_response_set_data((u8)sizeof picorc_scan_response_data, (u8 *)picorc_scan_response_data);
 	gap_advertisements_enable(true);
 }

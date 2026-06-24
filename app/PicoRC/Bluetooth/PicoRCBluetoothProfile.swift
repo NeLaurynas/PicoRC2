@@ -38,6 +38,6 @@ enum PicoRCBluetoothProfile {
         }
 
         let localName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-        return localName == "PicoRC"
+        return localName == "PicoRC/Tank"
     }
 }
