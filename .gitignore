@@ -26,3 +26,6 @@ xcuserdata/
 cmake-build-*
 .DS_Store
 app/build_dd
+schematics/*/*.lck
+schematics/*/*_backup*
+schematics/*/.history

@@ -6,7 +6,6 @@
 #include <hardware/gpio.h>
 #include <hardware/pwm.h>
 #include <pico/time.h>
-#include <stdlib.h>
 #include <utils.h>
 
 #include "defines/config.h"
@@ -18,21 +17,22 @@ typedef struct {
 } pwm_gpio_t;
 
 typedef struct {
-	u8 positive_pin;
-	u8 negative_pin;
-	u8 slice;
-	u8 channel;
-} pwm_motor_t;
+	pwm_gpio_t forward_pwm;
+	pwm_gpio_t backward_pwm;
+} dual_pwm_motor_t;
 
-static constexpr u8 no_pin = 0b11111111;
+typedef struct {
+	u8 dir_pin;
+	u8 pwm_pin;
+} dir_gpio_motor_t;
+
 static constexpr u16 main_pwm_top = 100;
 static constexpr u16 main_pwm_full = main_pwm_top + 1;
-static constexpr u16 turret_pwm_top = 10000;
-static constexpr u16 turret_pwm_full = turret_pwm_top + 1;
 
-static pwm_motor_t main_left = {.positive_pin = no_pin, .negative_pin = MOD_ENGINE_MAIN_ENABLE1};
-static pwm_motor_t main_right = {.positive_pin = no_pin, .negative_pin = MOD_ENGINE_MAIN_ENABLE2};
-static pwm_motor_t turret_rotate = {.positive_pin = MOD_TURRET_CTRL_ENABLE1, .negative_pin = MOD_TURRET_CTRL_ENABLE2};
+static dual_pwm_motor_t main_left;
+static dual_pwm_motor_t main_right;
+static dir_gpio_motor_t turret_rotate = {.dir_pin = MOD_TURRET_CTRL_ROTATE_DIR, .pwm_pin = MOD_TURRET_CTRL_ROTATE_PWM};
+static dir_gpio_motor_t turret_tilt = {.dir_pin = MOD_TURRET_CTRL_TILT_DIR, .pwm_pin = MOD_TURRET_CTRL_TILT_PWM};
 
 static void output_init(const u8 pin) {
 	gpio_init(pin);
@@ -58,10 +58,18 @@ static pwm_gpio_t init_pwm(const u8 pin, const u16 top, const float clk_div) {
 	return (pwm_gpio_t){.slice = slice, .channel = channel};
 }
 
-static void set_motor(const pwm_motor_t *const motor, const i32 val, const u16 pwm) {
-	if (motor->positive_pin != no_pin) gpio_put(motor->positive_pin, val > 0);
-	if (motor->negative_pin != no_pin) gpio_put(motor->negative_pin, val < 0);
-	pwm_set_chan_level(motor->slice, motor->channel, pwm);
+static void set_dual_pwm(const dual_pwm_motor_t *const motor, const i32 val, const u16 pwm) {
+	pwm_set_chan_level(motor->forward_pwm.slice, motor->forward_pwm.channel, val > 0 ? pwm : 0);
+	pwm_set_chan_level(motor->backward_pwm.slice, motor->backward_pwm.channel, val < 0 ? pwm : 0);
+}
+
+static i8 set_turret(const dir_gpio_motor_t *const motor, const i32 val) {
+	const bool active = val != 0;
+	gpio_put(motor->dir_pin, val > 0);
+	gpio_put(motor->pwm_pin, active);
+
+	if (val == 0) return 0;
+	return val > 0 ? 100 : -100;
 }
 
 static i8 command_value(const i32 val, const i32 deadzone, const i32 max_val) {
@@ -84,40 +92,20 @@ static void adjust_drive_pwm(u16 *pwm) {
 	*pwm = out;
 }
 
-static void adjust_rotate_pwm(u16 *pwm) {
-	if (*pwm >= turret_pwm_top) {
-		*pwm = turret_pwm_full;
-		return;
-	}
-	if (*pwm <= 4000) {
-		*pwm = *pwm * 1.05;
-	} else if (*pwm <= 5000) {
-		*pwm = *pwm * (1.05 - 0.025 * ((*pwm - 4000) / 1000.0));
-	} else if (*pwm <= 6000) {
-		*pwm = *pwm * (1.025 - 0.02 * ((*pwm - 5000) / 1000.0)); // Gradual reduction from 1.05x to 1.02x
-	} else if (*pwm <= 9000) {
-		*pwm = *pwm * (1.005 - 0.27 * ((*pwm - 6000) / 3000.0)); // Gradual decrease to 0.75x
-	}
-}
-
 void main_engine_init() {
-	static const u8 pins[] = {
-		MOD_ENGINE_MAIN_ENABLE1,
-		MOD_ENGINE_MAIN_ENABLE2,
-	};
-	outputs_init(pins, ARRAY_SIZE(pins));
-
 	const auto clk_div = utils_calculate_pio_clk_div(0.5f); // 3.f for 5 khz frequency (2.f for 7.5 khz 1.f for 15 khz)
 	if (state.app_settings.debug_logs) utils_printf("MAIN ENGINE CLK DIV: %f\n", clk_div);
 
-	const auto pwm1 = init_pwm(MOD_ENGINE_MAIN_PWM1, main_pwm_top, clk_div);
-	const auto pwm2 = init_pwm(MOD_ENGINE_MAIN_PWM2, main_pwm_top, clk_div);
+	const auto left_forward = init_pwm(MOD_ENGINE_MAIN_LEFT_PWM_FORWARD, main_pwm_top, clk_div);
+	const auto left_backward = init_pwm(MOD_ENGINE_MAIN_LEFT_PWM_BACKWARD, main_pwm_top, clk_div);
+	const auto right_forward = init_pwm(MOD_ENGINE_MAIN_RIGHT_PWM_FORWARD, main_pwm_top, clk_div);
+	const auto right_backward = init_pwm(MOD_ENGINE_MAIN_RIGHT_PWM_BACKWARD, main_pwm_top, clk_div);
 	sleep_ms(1);
 
-	main_left.slice = pwm1.slice;
-	main_left.channel = pwm1.channel;
-	main_right.slice = pwm2.slice;
-	main_right.channel = pwm2.channel;
+	main_left.forward_pwm = left_forward;
+	main_left.backward_pwm = left_backward;
+	main_right.forward_pwm = right_forward;
+	main_right.backward_pwm = right_backward;
 	sleep_ms(1);
 }
 
@@ -130,8 +118,8 @@ main_engine_command_t main_engine_advanced(const i32 left, const i32 right) {
 	adjust_drive_pwm(&pwm_right);
 	if (state.app_settings.debug_logs) utils_printf("%d<<>>%d\n", pwm_left, pwm_right);
 
-	set_motor(&main_left, left, pwm_left);
-	set_motor(&main_right, right, pwm_right);
+	set_dual_pwm(&main_left, left, pwm_left);
+	set_dual_pwm(&main_right, right, pwm_right);
 
 	return (main_engine_command_t){
 		.left = command_value(left, XY_DEAD_ZONE, XY_MAX),
@@ -180,8 +168,8 @@ main_engine_command_t main_engine_basic(const i32 gas, const i32 steer) {
 		utils_printf("%c%d<<%ld>>%c%d\n", gas_left < 0 ? '-' : '+', pwm_left, gas, gas_right < 0 ? '-' : '+', pwm_right);
 	}
 
-	set_motor(&main_left, gas_left, pwm_left);
-	set_motor(&main_right, gas_right, pwm_right);
+	set_dual_pwm(&main_left, gas_left, pwm_left);
+	set_dual_pwm(&main_right, gas_right, pwm_right);
 
 	return (main_engine_command_t){
 		.left = command_value(gas_left, TRIG_DEAD_ZONE, TRIG_MAX),
@@ -190,35 +178,20 @@ main_engine_command_t main_engine_basic(const i32 gas, const i32 steer) {
 }
 
 void turret_ctrl_init() {
-	static const u8 pins[] = {
-		MOD_TURRET_CTRL_ENABLE1,
-		MOD_TURRET_CTRL_ENABLE2,
-		MOD_TURRET_CTRL_ENABLE3,
-		MOD_TURRET_CTRL_ENABLE4,
-		MOD_TURRET_CTRL_PWM2,
+	static constexpr u8 pins[] = {
+		MOD_TURRET_CTRL_ROTATE_PWM,
+		MOD_TURRET_CTRL_ROTATE_DIR,
+		MOD_TURRET_CTRL_TILT_PWM,
+		MOD_TURRET_CTRL_TILT_DIR,
 	};
 	outputs_init(pins, ARRAY_SIZE(pins));
-
-	const auto pwm1 = init_pwm(MOD_TURRET_CTRL_PWM1, turret_pwm_top, 20.f); // 3.f for 5 khz frequency (2.f for 7.5 khz 1.f for 15 khz)
-	sleep_ms(1);
-
-	turret_rotate.slice = pwm1.slice;
-	turret_rotate.channel = pwm1.channel;
 	sleep_ms(1);
 }
 
 i8 turret_ctrl_rotate(const i32 val) {
-	u16 pwm = utils_scaled_pwm_percentage(val, XY_DEAD_ZONE, XY_MAX) * 100;
-	adjust_rotate_pwm(&pwm);
-
-	set_motor(&turret_rotate, val, pwm);
-	return command_value(val, XY_DEAD_ZONE, XY_MAX);
+	return set_turret(&turret_rotate, val);
 }
 
 i8 turret_ctrl_lift(const i32 val) {
-	const bool active = abs(val) > XY_DEAD_ZONE + 200;
-	gpio_put(MOD_TURRET_CTRL_PWM2, active);
-	gpio_put(MOD_TURRET_CTRL_ENABLE3, active && val > 0);
-	gpio_put(MOD_TURRET_CTRL_ENABLE4, active && val < 0);
-	return command_value(val, XY_DEAD_ZONE + 200, XY_MAX);
+	return set_turret(&turret_tilt, val);
 }
