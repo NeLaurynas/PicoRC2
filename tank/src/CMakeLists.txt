@@ -54,6 +54,7 @@ set(BLUEPAD32_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../lib/bluepad32")
 set(PICO_SHARED_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../lib/pico-shared")
 set(LITTLEFS_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../lib/littlefs")
 set(BTSTACK_ROOT "${PICO_SDK_PATH}/lib/btstack")
+set(PICO_SHARED_PROJECT_CONFIG_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 set(FREERTOS_CONFIG_FILE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}")
 
@@ -255,6 +256,7 @@ target_link_libraries(${PROJECT_NAME}
 		pico_shared_frtos
 		pico_shared_utils
 		pico_shared_memory
+		pico_shared_v_monitor
 		pico_status_led
 		pico_stdlib
 )

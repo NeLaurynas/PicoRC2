@@ -4,6 +4,7 @@
 #include <FreeRTOS.h>
 #include <pico/cyw43_arch.h>
 #include <pico/cyw43_driver.h>
+#include <shared_modules/v_monitor/v_monitor.h>
 #include <task.h>
 #include <uni.h>
 #include <utils.h>
@@ -35,6 +36,7 @@ void task_startup(void *task_parameter) {
 	}
 	tasks_create(&state.tasks.storage);
 
+	v_monitor_init();
 	control_input_init();
 	control_actuation_init();
 

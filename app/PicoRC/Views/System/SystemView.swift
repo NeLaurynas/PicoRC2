@@ -26,6 +26,10 @@ struct SystemView: View {
         fixedPointText(state.cpuTempCX100)
     }
 
+    private var batteryVoltageText: String {
+        fixedPointText(state.batteryVoltageVX100)
+    }
+
     private var uptimeText: String {
         let total = max(state.uptimeSeconds, 0)
         let seconds = total % 60
@@ -46,7 +50,12 @@ struct SystemView: View {
             VStack(spacing: 14) {
                 CPUCard(fraction: cpuFraction, valueText: cpuText, clockText: cpuSpeedText)
 
-                MiscCard(tempText: cpuTempText, bootCount: state.bootCount, uptimeText: uptimeText)
+                MiscCard(
+                    tempText: cpuTempText,
+                    batteryVoltageText: batteryVoltageText,
+                    bootCount: state.bootCount,
+                    uptimeText: uptimeText
+                )
 
                 MemoryCard(
                     title: "FREERTOS HEAP",
@@ -190,6 +199,7 @@ private struct StatusPill: View {
 
 private struct MiscCard: View {
     let tempText: String
+    let batteryVoltageText: String
     let bootCount: Int
     let uptimeText: String
 
@@ -213,6 +223,18 @@ private struct MiscCard: View {
                     value: tempText,
                     unit: "C",
                     color: .hudAmber
+                )
+
+                Divider()
+                    .frame(height: 42)
+                    .background(.white.opacity(0.14))
+
+                HardwareStat(
+                    title: "BATTERY",
+                    systemImage: "battery.100percent",
+                    value: batteryVoltageText,
+                    unit: "V",
+                    color: .hudCyan
                 )
 
                 Divider()

@@ -15,8 +15,8 @@ enum TelemetryPacket {
 
 struct TelemetryPacketParser {
     private static let tankStateKnownMask: UInt8 = 0b0001_1111
-    private static let systemStateKnownMask: UInt16 = 0b0000_0001_1111_1111
-    private static let systemStateFieldLengths = [2, 2, 2, 2, 2, 2, 2, 2, 4]
+    private static let systemStateKnownMask: UInt16 = 0b0000_0011_1111_1111
+    private static let systemStateFieldLengths = [2, 2, 2, 2, 2, 2, 2, 2, 2, 4]
 
     private var tankStateBytes = Array(repeating: UInt8(0), count: PicoRCBluetoothProfile.tankStateLength)
     private var systemStateBytes = Array(repeating: UInt8(0), count: PicoRCBluetoothProfile.systemStateLength)
@@ -169,7 +169,8 @@ struct TelemetryPacketParser {
             systemUsedKiB: unsigned16(systemStateBytes, at: 10),
             systemTotalKiB: unsigned16(systemStateBytes, at: 12),
             bootCount: unsigned16(systemStateBytes, at: 14),
-            uptimeSeconds: unsigned32(systemStateBytes, at: 16)
+            batteryVoltageVX100: unsigned16(systemStateBytes, at: 16),
+            uptimeSeconds: unsigned32(systemStateBytes, at: 18)
         )
     }
 

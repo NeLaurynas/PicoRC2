@@ -50,8 +50,8 @@ Stream packets are typed by the first byte:
 - `0` - log text.
 - `1` - full tank state, version `2`, 5-byte payload.
 - `2` - tank state diff, version `2`.
-- `3` - system state, version `4`, 20-byte payload.
-- `4` - system state diff, version `4`; the payload starts with a little-endian `u16` field mask followed by changed field values.
+- `3` - system state, version `5`, 22-byte payload.
+- `4` - system state diff, version `5`; the payload starts with a little-endian `u16` field mask followed by changed field values.
 
 Full tank and system packets are sent when notifications start and then every 30 seconds. Between full snapshots, diff packets carry changed fields only; unchanged ticks may emit no telemetry packet.
 

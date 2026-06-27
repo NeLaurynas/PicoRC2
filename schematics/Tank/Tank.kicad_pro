@@ -285,7 +285,7 @@
         "line_style": 0,
         "name": "3V3",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 4,
+        "priority": 9,
         "schematic_color": "rgb(247, 0, 0)",
         "tuning_profile": "",
         "wire_width": 6
@@ -295,7 +295,7 @@
         "line_style": 0,
         "name": "4V+",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 5,
+        "priority": 10,
         "schematic_color": "rgb(195, 0, 0)",
         "tuning_profile": "",
         "wire_width": 6
@@ -305,8 +305,38 @@
         "line_style": 0,
         "name": "6V+",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 6,
+        "priority": 11,
         "schematic_color": "rgb(143, 0, 0)",
+        "tuning_profile": "",
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "line_style": 0,
+        "name": "ADC",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 0,
+        "schematic_color": "rgb(255, 59, 249)",
+        "tuning_profile": "",
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "line_style": 0,
+        "name": "LIFT_1",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 2,
+        "schematic_color": "rgb(243, 132, 0)",
+        "tuning_profile": "",
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "line_style": 0,
+        "name": "LIFT_2",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 1,
+        "schematic_color": "rgb(192, 143, 47)",
         "tuning_profile": "",
         "wire_width": 6
       },
@@ -315,7 +345,7 @@
         "line_style": 0,
         "name": "PWM1_LEFT",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 0,
+        "priority": 5,
         "schematic_color": "rgb(0, 0, 243)",
         "tuning_profile": "",
         "wire_width": 6
@@ -325,7 +355,7 @@
         "line_style": 0,
         "name": "PWM1_RIGHT",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 1,
+        "priority": 6,
         "schematic_color": "rgb(80, 164, 185)",
         "tuning_profile": "",
         "wire_width": 6
@@ -335,7 +365,7 @@
         "line_style": 0,
         "name": "PWM2_LEFT",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 2,
+        "priority": 7,
         "schematic_color": "rgb(0, 0, 243)",
         "tuning_profile": "",
         "wire_width": 6
@@ -345,8 +375,28 @@
         "line_style": 0,
         "name": "PWM2_RIGHT",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 3,
+        "priority": 8,
         "schematic_color": "rgb(80, 164, 185)",
+        "tuning_profile": "",
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "line_style": 0,
+        "name": "ROTATE_1",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 4,
+        "schematic_color": "rgb(169, 161, 27)",
+        "tuning_profile": "",
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "line_style": 0,
+        "name": "ROTATE_2",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 3,
+        "schematic_color": "rgb(243, 226, 2)",
         "tuning_profile": "",
         "wire_width": 6
       }
@@ -365,6 +415,15 @@
       "/6V+": [
         "6V+"
       ],
+      "/ADC1": [
+        "ADC"
+      ],
+      "/LIF1": [
+        "LIFT_1"
+      ],
+      "/LIF2": [
+        "LIFT_2"
+      ],
       "/PWM1_B": [
         "PWM2_RIGHT"
       ],
@@ -382,6 +441,12 @@
       ],
       "/PWM2_For": [
         "PWM2_LEFT"
+      ],
+      "/ROT1": [
+        "ROTATE_1"
+      ],
+      "/ROT2": [
+        "ROTATE_2"
       ]
     },
     "netclass_patterns": []
@@ -514,7 +579,7 @@
         "uuid": "18b6e038-d9fb-4fda-8049-19656557462c"
       }
     ],
-    "used_designators": "D1-3,#PWR1-9,M1-4,4VOLTS1,DRV1-2,Pico1,U1,TB1",
+    "used_designators": "C1,U1,Pico1,SW1,R1-3,BT1,#PWR1-15,D1-4,M1-4,4VOLTS1,DRV1-2,TB1",
     "variants": []
   },
   "sheets": [

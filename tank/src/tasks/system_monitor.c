@@ -6,6 +6,7 @@
 #include <pico/time.h>
 #include <shared_modules/cpu_cores/cpu_cores.h>
 #include <shared_modules/memory/memory.h>
+#include <shared_modules/v_monitor/v_monitor.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <task.h>
@@ -17,7 +18,7 @@
 
 #define BYTES_IN_KIB 1024U
 #define PICO2_SRAM_KIB 520U
-#define CPU_TEMP_EMA_ALPHA 0.10f
+#define CPU_TEMP_EMA_ALPHA 0.07f
 #define CPU_SAMPLE_TICKS MS_TO_TICKS(100)
 #define SYSTEM_MEMORY_SAMPLE_TICKS MS_TO_TICKS(10'000)
 
@@ -44,10 +45,30 @@ static u16 cpu_mhz_to_x100(const float mhz) {
 	return (u16)(mhz * 100.0f + 0.5f);
 }
 
+static u16 voltage_to_x100(const float voltage) {
+	if (voltage <= 0.0f) return 0;
+	if (voltage >= (float)UINT16_MAX / 100.0f) return UINT16_MAX;
+	return (u16)(voltage * 100.0f + 0.5f);
+}
+
 static i16 cpu_temp_to_x100(const float temp_c) {
 	if (temp_c <= (float)INT16_MIN / 100.0f) return INT16_MIN;
 	if (temp_c >= (float)INT16_MAX / 100.0f) return INT16_MAX;
 	return (i16)(temp_c * 100.0f + (temp_c >= 0.0f ? 0.5f : -0.5f));
+}
+
+static void sample_voltage() {
+	taskENTER_CRITICAL();
+	v_monitor_sample(true);
+	taskEXIT_CRITICAL();
+}
+
+static float sample_temp() {
+	taskENTER_CRITICAL();
+	const auto temp_c = cpu_temp(false);
+	taskEXIT_CRITICAL();
+
+	return temp_c;
 }
 
 // Returns true once `period` ticks have elapsed since `*last`, advancing `*last`
@@ -76,6 +97,7 @@ void task_system_monitor(void *task_parameter) {
 	i16 cpu_temp_c_x100 = 0;
 	bool cpu_temp_valid = false;
 	u16 system_used_kib = 0;
+	u16 battery_voltage_v_x100 = 0;
 
 	while (true) {
 		const auto ticks = xTaskGetTickCount();
@@ -83,12 +105,15 @@ void task_system_monitor(void *task_parameter) {
 		utils_internal_led(sys_led_on);
 		sys_led_on = !sys_led_on;
 
+		sample_voltage();
+		battery_voltage_v_x100 = voltage_to_x100(v_monitor_voltage(false));
+
 		if (interval_elapsed(ticks, &cpu_last_sample, CPU_SAMPLE_TICKS)) {
 			float cpu_usage = 0.0f;
 			(void)frtos_cpu_usage_percent(&cpu_usage);
 			cpu_x10 = cpu_percent_to_x10(cpu_usage);
 			cpu_speed_mhz_x100 = cpu_mhz_to_x100(cpu_speed(false));
-			const auto raw_temp_c = cpu_temp(false);
+			const auto raw_temp_c = sample_temp();
 			if (!cpu_temp_valid) {
 				cpu_temp_c = raw_temp_c;
 				cpu_temp_valid = true;
@@ -117,6 +142,7 @@ void task_system_monitor(void *task_parameter) {
 			.system_used_kib = system_used_kib,
 			.system_total_kib = system_total_kib,
 			.boot_count = state.app_data.boot_count,
+			.battery_voltage_v_x100 = battery_voltage_v_x100,
 			.uptime_seconds = uptime_seconds,
 		};
 		state_system_telemetry_sync_store(&telemetry);

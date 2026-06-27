@@ -24,17 +24,19 @@
 #define APP_BT_ADV_CHANNEL_MAP 0b00000111
 #define TANK_STATE_VERSION 2
 #define TANK_STATE_LEN 5
-#define SYSTEM_STATE_VERSION 4
-#define SYSTEM_STATE_LEN 20
+#define SYSTEM_STATE_VERSION 5
+#define SYSTEM_STATE_LEN 22
 #define APP_SETTINGS_VERSION 1
 #define APP_SETTINGS_LEN 2
 #define APP_SETTINGS_DEBUG_LOGS_FLAG 0b00000001
+#define LIPO_2S_EMPTY_V 6.6f
+#define LIPO_2S_FULL_V 8.4f
 #define TANK_STATE_PERIOD_MS 50
 #define TELEMETRY_FULL_INTERVAL_MS 30'000
 #define TANK_STATE_FULL_INTERVAL (TELEMETRY_FULL_INTERVAL_MS / TANK_STATE_PERIOD_MS)
 #define SYSTEM_STATE_INTERVAL 10
 #define SYSTEM_STATE_FULL_INTERVAL (TELEMETRY_FULL_INTERVAL_MS / (TANK_STATE_PERIOD_MS * SYSTEM_STATE_INTERVAL))
-#define SYSTEM_STATE_FIELD_COUNT 9
+#define SYSTEM_STATE_FIELD_COUNT 10
 
 typedef struct {
 	u8 data[NOTIFICATION_MTU];
@@ -83,8 +85,18 @@ static const u8 system_state_field_lens[SYSTEM_STATE_FIELD_COUNT] = {
 	2,
 	2,
 	2,
+	2,
 	4,
 };
+
+static u8 battery_level_percent(const u16 voltage_v_x100) {
+	const float voltage = (float)voltage_v_x100 / 100.0f;
+	if (voltage <= LIPO_2S_EMPTY_V) return 0;
+	if (voltage >= LIPO_2S_FULL_V) return 100;
+
+	const auto percent = ((voltage - LIPO_2S_EMPTY_V) * 100.0f) / (LIPO_2S_FULL_V - LIPO_2S_EMPTY_V);
+	return (u8)(percent + 0.5f);
+}
 
 static void app_settings_build_current(u8 bytes[APP_SETTINGS_LEN]) {
 	bytes[0] = APP_SETTINGS_VERSION;
@@ -227,7 +239,8 @@ static void system_state_build_current(u8 bytes[SYSTEM_STATE_LEN]) {
 	little_endian_store_16(bytes, 10, telemetry.system_used_kib);
 	little_endian_store_16(bytes, 12, telemetry.system_total_kib);
 	little_endian_store_16(bytes, 14, telemetry.boot_count);
-	little_endian_store_32(bytes, 16, telemetry.uptime_seconds);
+	little_endian_store_16(bytes, 16, telemetry.battery_voltage_v_x100);
+	little_endian_store_32(bytes, 18, telemetry.uptime_seconds);
 }
 
 static void system_state_remember(const u8 bytes[SYSTEM_STATE_LEN]) {
@@ -398,6 +411,13 @@ static u16 app_bt_att_read_callback(
 			u8 bytes[APP_SETTINGS_LEN];
 			app_settings_build_current(bytes);
 			return att_read_callback_handle_blob(bytes, sizeof bytes, offset, buffer, buffer_size);
+		}
+
+		case ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_BATTERY_LEVEL_01_VALUE_HANDLE: {
+			system_telemetry_t telemetry;
+			state_system_telemetry_sync_load(&telemetry);
+			const u8 level = battery_level_percent(telemetry.battery_voltage_v_x100);
+			return att_read_callback_handle_blob(&level, sizeof level, offset, buffer, buffer_size);
 		}
 
 		case ATT_CHARACTERISTIC_F7A4C002_2E2D_4E4B_9F2C_5049434F5243_01_CLIENT_CONFIGURATION_HANDLE: {
