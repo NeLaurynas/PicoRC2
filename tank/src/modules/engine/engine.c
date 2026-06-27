@@ -28,6 +28,8 @@ typedef struct {
 
 static constexpr u16 main_pwm_top = 100;
 static constexpr u16 main_pwm_full = main_pwm_top + 1;
+static constexpr u16 main_pwm_floor_command = 45;
+static constexpr u16 main_pwm_floor = 40 + (5 * (main_pwm_floor_command - 10)) / 8;
 
 static dual_pwm_motor_t main_left;
 static dual_pwm_motor_t main_right;
@@ -77,19 +79,14 @@ static i8 command_value(const i32 val, const i32 deadzone, const i32 max_val) {
 	return (i8)(val < 0 ? -magnitude : magnitude);
 }
 
-static void adjust_drive_pwm(u16 *pwm) {
+static void adjust_drive_pwm(u16 *const pwm) {
 	if (*pwm == 0) return;
 	if (*pwm >= main_pwm_top) {
 		*pwm = main_pwm_full;
 		return;
 	}
-	if (*pwm >= 90) return;
 
-	u16 out;
-	if (*pwm <= 10) out = 4UL * *pwm;
-	else out = 40UL + (5UL * (*pwm - 10UL)) / 8UL;
-
-	*pwm = out;
+	*pwm = main_pwm_floor + ((main_pwm_top - main_pwm_floor) * *pwm) / main_pwm_top;
 }
 
 void main_engine_init() {
