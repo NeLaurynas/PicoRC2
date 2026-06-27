@@ -106,7 +106,7 @@ void task_system_monitor(void *task_parameter) {
 		sys_led_on = !sys_led_on;
 
 		sample_voltage();
-		battery_voltage_v_x100 = voltage_to_x100(v_monitor_voltage(false));
+		battery_voltage_v_x100 = voltage_to_x100(v_monitor_voltage(state.app_settings.debug_logs));
 
 		if (interval_elapsed(ticks, &cpu_last_sample, CPU_SAMPLE_TICKS)) {
 			float cpu_usage = 0.0f;

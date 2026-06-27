@@ -88,11 +88,15 @@ struct PicoRCLiveActivity: Widget {
             } compactTrailing: {
                 Text(state.cpuPercentCompact)
                     .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                     .foregroundStyle(color)
                     .contentTransition(.numericText(value: state.cpuPercentValue))
             } minimal: {
-                Text(state.cpuPercentCompact)
+                Text(state.cpuPercentMinimal)
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                     .foregroundStyle(color)
                     .contentTransition(.numericText(value: state.cpuPercentValue))
             }

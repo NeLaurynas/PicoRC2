@@ -23,6 +23,10 @@ extension PicoRCLiveActivityAttributes.ContentState {
     }
 
     var cpuPercentCompact: String {
+        "\(cpuPercentText)%"
+    }
+
+    var cpuPercentMinimal: String {
         "\(Int((Double(cpuX10) / 10.0).rounded()))%"
     }
 

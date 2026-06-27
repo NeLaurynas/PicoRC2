@@ -30,6 +30,13 @@ struct SystemView: View {
         fixedPointText(state.batteryVoltageVX100)
     }
 
+    private var batteryPercent: Int {
+        let voltage = Double(state.batteryVoltageVX100) / 100.0
+        let fraction = min(max((voltage - 6.6) / (8.2 - 6.6), 0.0), 1.0)
+
+        return Int((fraction * 100.0).rounded())
+    }
+
     private var uptimeText: String {
         let total = max(state.uptimeSeconds, 0)
         let seconds = total % 60
@@ -50,9 +57,10 @@ struct SystemView: View {
             VStack(spacing: 14) {
                 CPUCard(fraction: cpuFraction, valueText: cpuText, clockText: cpuSpeedText)
 
+                BatteryCard(percent: batteryPercent, voltageText: batteryVoltageText)
+
                 MiscCard(
                     tempText: cpuTempText,
-                    batteryVoltageText: batteryVoltageText,
                     bootCount: state.bootCount,
                     uptimeText: uptimeText
                 )
@@ -119,29 +127,44 @@ private struct CPUCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "gauge.with.dots.needle.67percent")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(color)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "gauge.with.dots.needle.67percent")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(color)
 
-                Text("CPU LOAD")
-                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                    .tracking(1.5)
-                    .foregroundStyle(.white.opacity(0.55))
+                    Text("CPU LOAD")
+                        .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                        .tracking(1.5)
+                        .foregroundStyle(.white.opacity(0.55))
+                }
 
                 Spacer(minLength: 8)
 
-                StatusPill(text: statusLabel, color: color)
+                VStack(alignment: .trailing, spacing: 5) {
+                    StatusPill(text: statusLabel, color: color)
+
+					HStack(spacing: 4) {
+						Image(systemName: "speedometer")
+							.font(.system(size: 11, weight: .bold))
+
+						Text("\(clockText) / 150 MHz")
+							.font(.system(size: 12, weight: .heavy, design: .monospaced))
+							.lineLimit(1)
+							.minimumScaleFactor(0.6)
+					}
+                    .foregroundStyle(.hudCyan.opacity(0.9))
+                }
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 1) {
                 Text(valueText)
-                    .font(.system(size: 46, weight: .bold, design: .monospaced))
+                    .font(.system(size: 42, weight: .bold, design: .monospaced))
                     .foregroundStyle(color)
 
                 Text("%")
-                    .font(.system(size: 22, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 20, weight: .heavy, design: .monospaced))
                     .foregroundStyle(color.opacity(0.7))
             }
             .lineLimit(1)
@@ -149,33 +172,11 @@ private struct CPUCard: View {
             .shadow(color: color.opacity(0.35), radius: 8)
 
             MetricBar(fraction: fraction, color: color)
-                .frame(height: 10)
-
-            HStack(spacing: 7) {
-                Image(systemName: "speedometer")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.hudCyan)
-
-                Text("CLOCK")
-                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                    .tracking(1.5)
-                    .foregroundStyle(.white.opacity(0.55))
-
-                Spacer(minLength: 8)
-
-                Text("\(clockText) / 150")
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .foregroundStyle(.hudCyan)
-
-                Text("MHz")
-                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(.hudCyan.opacity(0.7))
-            }
+                .frame(height: 8)
         }
-        .padding(16)
-        .glassPanel(cornerRadius: 22, accent: color)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .glassPanel(cornerRadius: 18, accent: color)
     }
 }
 
@@ -195,11 +196,88 @@ private struct StatusPill: View {
     }
 }
 
+// MARK: - Battery card
+
+private struct BatteryCard: View {
+    let percent: Int
+    let voltageText: String
+
+    private var fraction: Double {
+        Double(percent) / 100.0
+    }
+
+    private var color: Color {
+        if percent <= 20 {
+            return .hudRed
+        }
+        if percent <= 50 {
+            return .hudAmber
+        }
+        return .hudGreen
+    }
+
+    private var systemImage: String {
+        if percent <= 5 {
+            return "battery.0percent"
+        }
+        if percent <= 25 {
+            return "battery.25percent"
+        }
+        if percent <= 50 {
+            return "battery.50percent"
+        }
+        if percent <= 75 {
+            return "battery.75percent"
+        }
+        return "battery.100percent"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(color)
+
+                Text("BATTERY")
+                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Spacer(minLength: 8)
+
+                Text("\(voltageText) V")
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+                    .foregroundStyle(color)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text("\(percent)")
+                    .font(.system(size: 38, weight: .bold, design: .monospaced))
+                    .foregroundStyle(color)
+
+                Text("%")
+                    .font(.system(size: 19, weight: .heavy, design: .monospaced))
+                    .foregroundStyle(color.opacity(0.7))
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
+            .shadow(color: color.opacity(0.30), radius: 8)
+
+            MetricBar(fraction: fraction, color: color)
+                .frame(height: 8)
+        }
+        .padding(16)
+        .glassPanel(cornerRadius: 18, accent: color)
+    }
+}
+
 // MARK: - Misc card
 
 private struct MiscCard: View {
     let tempText: String
-    let batteryVoltageText: String
     let bootCount: Int
     let uptimeText: String
 
@@ -230,10 +308,10 @@ private struct MiscCard: View {
                     .background(.white.opacity(0.14))
 
                 HardwareStat(
-                    title: "BATTERY",
-                    systemImage: "battery.100percent",
-                    value: batteryVoltageText,
-                    unit: "V",
+                    title: "UPTIME",
+                    systemImage: "clock",
+                    value: uptimeText,
+                    unit: "",
                     color: .hudCyan
                 )
 
@@ -248,29 +326,6 @@ private struct MiscCard: View {
                     unit: "",
                     color: .hudGreen
                 )
-            }
-
-            Rectangle()
-                .fill(.white.opacity(0.10))
-                .frame(height: 1)
-
-            HStack(spacing: 7) {
-                Image(systemName: "clock")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.hudCyan)
-
-                Text("UPTIME")
-                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                    .tracking(1.5)
-                    .foregroundStyle(.white.opacity(0.55))
-
-                Spacer(minLength: 8)
-
-                Text(uptimeText)
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .foregroundStyle(.hudCyan)
             }
         }
         .padding(.horizontal, 16)
