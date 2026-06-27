@@ -22,7 +22,7 @@ typedef uint64_t u64;
 #define APP_SYS_CLK_KHZ 48'000u
 #define APP_SYS_CLK_HZ  (APP_SYS_CLK_KHZ * 1000u)
 
-#define MOD_VMON_RES_POS            99714.2f
+#define MOD_VMON_RES_POS            99900.0f
 #define MOD_VMON_RES_NEG            46900.0f
 #define MOD_VMON_ADC_PIN            26
 #define MOD_VMON_ADC                0

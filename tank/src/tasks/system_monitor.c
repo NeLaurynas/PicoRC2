@@ -20,6 +20,7 @@
 #define PICO2_SRAM_KIB 520U
 #define CPU_TEMP_EMA_ALPHA 0.07f
 #define CPU_SAMPLE_TICKS MS_TO_TICKS(100)
+#define BATTERY_LOG_TICKS SECONDS_TO_TICKS(1)
 #define SYSTEM_MEMORY_SAMPLE_TICKS MS_TO_TICKS(10'000)
 
 static bool sys_led_on = true;
@@ -90,6 +91,7 @@ void task_system_monitor(void *task_parameter) {
 
 	// Seed sample times one period in the past so both sample on the first loop.
 	TickType_t cpu_last_sample = start - CPU_SAMPLE_TICKS;
+	TickType_t battery_log_last = start - BATTERY_LOG_TICKS;
 	TickType_t system_memory_last_sample = start - SYSTEM_MEMORY_SAMPLE_TICKS;
 	u16 cpu_x10 = 0;
 	u16 cpu_speed_mhz_x100 = 0;
@@ -106,7 +108,8 @@ void task_system_monitor(void *task_parameter) {
 		sys_led_on = !sys_led_on;
 
 		sample_voltage();
-		battery_voltage_v_x100 = voltage_to_x100(v_monitor_voltage(state.app_settings.debug_logs));
+		const bool print_battery = state.app_settings.debug_logs && interval_elapsed(ticks, &battery_log_last, BATTERY_LOG_TICKS);
+		battery_voltage_v_x100 = voltage_to_x100(v_monitor_voltage(print_battery));
 
 		if (interval_elapsed(ticks, &cpu_last_sample, CPU_SAMPLE_TICKS)) {
 			float cpu_usage = 0.0f;
