@@ -139,11 +139,11 @@ main_engine_command_t main_engine_basic(const i32 gas, const i32 steer) {
 	if (gas == 0) {
 		if (steer_perc <= steer_split) {
 			const u8 scaled_value = utils_scaled_pwm_percentage(steer_perc, 0, steer_split);
-			*gas_active = -TRIG_MAX * scaled_value / 100;
+			*gas_passive = TRIG_MAX * scaled_value / 100;
 		} else {
 			const u8 scaled_value = utils_scaled_pwm_percentage(steer_perc - steer_split, 0, 100 - steer_split);
-			*gas_active = -TRIG_MAX;
-			*gas_passive = TRIG_MAX * scaled_value / 100;
+			*gas_active = -TRIG_MAX * scaled_value / 100;
+			*gas_passive = TRIG_MAX;
 		}
 	} else {
 		const i8 sign = go_backward ? 1 : -1;

@@ -21,6 +21,7 @@
 #define CPU_TEMP_EMA_ALPHA 0.07f
 #define CPU_SAMPLE_TICKS MS_TO_TICKS(100)
 #define BATTERY_LOG_TICKS SECONDS_TO_TICKS(1)
+#define BATTERY_SHUTDOWN_V_X100 660U
 #define SYSTEM_MEMORY_SAMPLE_TICKS MS_TO_TICKS(10'000)
 
 static bool sys_led_on = true;
@@ -72,6 +73,15 @@ static float sample_temp() {
 	return temp_c;
 }
 
+static void request_shutdown() {
+	const auto shutdown_task = state.tasks.shutdown.handle;
+	if (shutdown_task == nullptr) {
+		cpu_cores_shutdown_from_core0();
+	}
+
+	(void)xTaskNotifyGive(shutdown_task);
+}
+
 // Returns true once `period` ticks have elapsed since `*last`, advancing `*last`
 // to `now` when it does. Unsigned tick subtraction keeps it wrap-safe.
 static bool interval_elapsed(const TickType_t now, TickType_t *const last, const TickType_t period) {
@@ -110,6 +120,9 @@ void task_system_monitor(void *task_parameter) {
 		sample_voltage();
 		const bool print_battery = state.app_settings.debug_logs && interval_elapsed(ticks, &battery_log_last, BATTERY_LOG_TICKS);
 		battery_voltage_v_x100 = voltage_to_x100(v_monitor_voltage(print_battery));
+		if (battery_voltage_v_x100 < BATTERY_SHUTDOWN_V_X100) {
+			request_shutdown();
+		}
 
 		if (interval_elapsed(ticks, &cpu_last_sample, CPU_SAMPLE_TICKS)) {
 			float cpu_usage = 0.0f;
