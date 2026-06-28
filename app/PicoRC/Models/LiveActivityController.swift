@@ -13,14 +13,18 @@ final class LiveActivityController {
     private var activity: Activity<PicoRCLiveActivityAttributes>?
 
     init() {
+        end()
+        /*
         if ActivityAuthorizationInfo().areActivitiesEnabled {
             _ = reconciledActivity()
         } else {
             end()
         }
+        */
     }
 
     func sync(systemState: SystemTelemetryState, status: String, isConnected: Bool) {
+        /*
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             end()
             return
@@ -41,6 +45,7 @@ final class LiveActivityController {
         } else {
             start(content: content)
         }
+        */
     }
 
     func end() {
