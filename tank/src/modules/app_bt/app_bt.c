@@ -37,6 +37,7 @@
 #define SYSTEM_STATE_INTERVAL 10
 #define SYSTEM_STATE_FULL_INTERVAL (TELEMETRY_FULL_INTERVAL_MS / (TANK_STATE_PERIOD_MS * SYSTEM_STATE_INTERVAL))
 #define SYSTEM_STATE_FIELD_COUNT 10
+#define ADVERTISING_CONTROLLER_CONNECT_PAUSE_MS 25'000
 
 typedef struct {
 	u8 data[NOTIFICATION_MTU];
@@ -67,6 +68,8 @@ static btstack_context_callback_registration_t notification_send_callback_regist
 static btstack_context_callback_registration_t notification_notify_callback_registration;
 static btstack_timer_source_t tank_state_timer;
 static bool tank_state_timer_active;
+static btstack_timer_source_t advertising_resume_timer;
+static bool advertising_resume_timer_active;
 static u8 tank_state_previous[TANK_STATE_LEN];
 static bool tank_state_previous_valid;
 static u16 tank_state_tick;
@@ -88,6 +91,32 @@ static const u8 system_state_field_lens[SYSTEM_STATE_FIELD_COUNT] = {
 	2,
 	4,
 };
+
+static bool is_app_client_connection(const hci_con_handle_t conn_handle) {
+	return conn_handle != HCI_CON_HANDLE_INVALID && gap_get_role(conn_handle) == HCI_ROLE_SLAVE;
+}
+
+static void advertising_resume_timer_stop() {
+	if (!advertising_resume_timer_active) return;
+
+	(void)btstack_run_loop_remove_timer(&advertising_resume_timer);
+	advertising_resume_timer_active = false;
+}
+
+static void advertising_resume_timer_callback(btstack_timer_source_t *timer) {
+	(void)timer;
+
+	advertising_resume_timer_active = false;
+	gap_advertisements_enable(true);
+}
+
+static void advertising_resume_timer_start() {
+	advertising_resume_timer_stop();
+
+	btstack_run_loop_set_timer(&advertising_resume_timer, ADVERTISING_CONTROLLER_CONNECT_PAUSE_MS);
+	btstack_run_loop_add_timer(&advertising_resume_timer);
+	advertising_resume_timer_active = true;
+}
 
 static u8 battery_level_percent(const u16 voltage_v_x100) {
 	const float voltage = (float)voltage_v_x100 / 100.0f;
@@ -446,6 +475,7 @@ static int app_bt_att_write_callback(
 	switch (att_handle) {
 		case ATT_CHARACTERISTIC_F7A4C002_2E2D_4E4B_9F2C_5049434F5243_01_CLIENT_CONFIGURATION_HANDLE: {
 			if (buffer_size != 2 || offset != 0) return ATT_ERROR_REQUEST_NOT_SUPPORTED;
+			if (!is_app_client_connection(con_handle)) return ATT_ERROR_REQUEST_NOT_SUPPORTED;
 
 			const auto configuration = little_endian_read_16(buffer, 0);
 			notification_connection_handle = con_handle;
@@ -492,13 +522,17 @@ static void app_bt_att_packet_handler(u8 packet_type, u16 channel, u8 *packet, u
 
 	switch (hci_event_packet_get_type(packet)) {
 		case ATT_EVENT_CONNECTED:
-			atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
+			if (!is_app_client_connection(att_event_connected_get_handle(packet))) break;
+
 			if (notification_connection_handle == HCI_CON_HANDLE_INVALID) {
 				notification_connection_handle = att_event_connected_get_handle(packet);
+				atomic_store_explicit(&negotiated_att_mtu, 0, memory_order_release);
 			}
 			break;
 
 		case ATT_EVENT_MTU_EXCHANGE_COMPLETE:
+			if (notification_connection_handle != att_event_mtu_exchange_complete_get_handle(packet)) break;
+
 			atomic_store_explicit(
 				&negotiated_att_mtu,
 				att_event_mtu_exchange_complete_get_MTU(packet),
@@ -515,6 +549,16 @@ static void app_bt_att_packet_handler(u8 packet_type, u16 channel, u8 *packet, u
 		default:
 			break;
 	}
+}
+
+void app_bt_pause_advertising_for_controller_connect() {
+	gap_advertisements_enable(false);
+	advertising_resume_timer_start();
+}
+
+void app_bt_resume_advertising() {
+	advertising_resume_timer_stop();
+	gap_advertisements_enable(true);
 }
 
 void app_bt_log_write_safe(const char *text, size_t len) {
@@ -568,10 +612,11 @@ void app_bt_start() {
 	}
 	configASSERT(notification_queue != nullptr);
 	notification_disable(true, true, true);
+	btstack_run_loop_set_timer_handler(&advertising_resume_timer, advertising_resume_timer_callback);
 
 	bd_addr_t null_addr = {0};
 	gap_advertisements_set_params(APP_BT_ADV_INTERVAL_MIN, APP_BT_ADV_INTERVAL_MAX, 0, 0, null_addr, APP_BT_ADV_CHANNEL_MAP, 0);
 	gap_advertisements_set_data((u8)sizeof picorc_adv_data, (u8 *)picorc_adv_data);
 	gap_scan_response_set_data((u8)sizeof picorc_scan_response_data, (u8 *)picorc_scan_response_data);
-	gap_advertisements_enable(true);
+	app_bt_resume_advertising();
 }

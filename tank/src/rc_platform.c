@@ -50,11 +50,14 @@ static uni_error_t rc_platform_on_device_discovered(bd_addr_t addr, const char *
 		return UNI_ERROR_IGNORE_DEVICE;
 	}
 
+	app_bt_pause_advertising_for_controller_connect();
+
 	return UNI_ERROR_SUCCESS;
 }
 
 static void rc_platform_on_device_connected(uni_hid_device_t *d) {
 	logi("rc_platform: device connected: %p\n", d);
+	app_bt_pause_advertising_for_controller_connect();
 	control_input_on_connected();
 	uni_bt_stop_scanning_unsafe();
 }
@@ -62,11 +65,13 @@ static void rc_platform_on_device_connected(uni_hid_device_t *d) {
 static void rc_platform_on_device_disconnected(uni_hid_device_t *d) {
 	logi("rc_platform: device disconnected: %p\n", d);
 	control_input_on_disconnected();
+	app_bt_resume_advertising();
 	uni_bt_start_scanning_and_autoconnect_unsafe();
 }
 
 static uni_error_t rc_platform_on_device_ready(uni_hid_device_t *d) {
 	logi("rc_platform: device ready: %p\n", d);
+	app_bt_resume_advertising();
 
 	return UNI_ERROR_SUCCESS;
 }

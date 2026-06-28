@@ -15,4 +15,7 @@ typedef enum {
 
 void app_bt_start();
 
+void app_bt_pause_advertising_for_controller_connect();
+void app_bt_resume_advertising();
+
 void app_bt_log_write_safe(const char *text, size_t len);
