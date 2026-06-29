@@ -120,7 +120,7 @@ bool app_storage_init() {
 
 	if (!app_data_load(&state.app_data)) memset(&state.app_data, 0, sizeof state.app_data);
 
-	state.app_data.boot_count = 1;
+	if (state.app_data.boot_count < UINT16_MAX) state.app_data.boot_count++;
 	if (!app_data_save(&state.app_data)) return false;
 
 	initialized = true;
