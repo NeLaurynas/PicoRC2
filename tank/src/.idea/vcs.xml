@@ -13,6 +13,7 @@
     <mapping directory="$PICO_SDK_PATH$/lib/cyw43-driver" vcs="Git" />
     <mapping directory="$PICO_SDK_PATH$/lib/lwip" vcs="Git" />
     <mapping directory="$PICO_SDK_PATH$/lib/mbedtls" vcs="Git" />
+    <mapping directory="$PICO_SDK_PATH$/lib/mbedtls/framework" vcs="Git" />
     <mapping directory="$PICO_SDK_PATH$/lib/tinyusb" vcs="Git" />
   </component>
 </project>
